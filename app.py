@@ -49,6 +49,12 @@ if "submission_confirmation" not in st.session_state:
 if "admin_authenticated" not in st.session_state:
     st.session_state.admin_authenticated = False
 
+if "confirm_delete_selected" not in st.session_state:
+    st.session_state.confirm_delete_selected = False
+
+if "confirm_reset_app" not in st.session_state:
+    st.session_state.confirm_reset_app = False
+
 
 # ============================================================
 # MOBILE-FRIENDLY CSS
@@ -152,6 +158,14 @@ st.markdown(
         margin-top: 40px;
         padding-bottom: 15px;
         font-size: 0.85rem;
+    }
+
+    .danger-box {
+        padding: 12px;
+        border-radius: 10px;
+        background: #fff1f1;
+        border: 1px solid #ffcccc;
+        margin-bottom: 12px;
     }
 
     @media (max-width: 600px) {
@@ -292,7 +306,7 @@ def get_predictions():
 
 
 # ============================================================
-# SAVE PREDICTION
+# SUBMIT PREDICTION
 # ============================================================
 
 def submit_prediction(
@@ -365,6 +379,65 @@ def submit_prediction(
 
 
 # ============================================================
+# DELETE SELECTED ROWS
+# ============================================================
+
+def delete_selected_rows(selected_ids):
+
+    if not selected_ids:
+        return False
+
+    connection = get_connection()
+
+    cursor = connection.cursor()
+
+    placeholders = ",".join(
+        ["?"] * len(selected_ids)
+    )
+
+    cursor.execute(
+        f"""
+        DELETE FROM predictions
+        WHERE id IN ({placeholders})
+        """,
+        selected_ids
+    )
+
+    connection.commit()
+
+    deleted_count = cursor.rowcount
+
+    connection.close()
+
+    return deleted_count
+
+
+# ============================================================
+# RESET ENTIRE DATABASE
+# ============================================================
+
+def reset_entire_database():
+
+    connection = get_connection()
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        "DELETE FROM predictions"
+    )
+
+    cursor.execute(
+        """
+        DELETE FROM sqlite_sequence
+        WHERE name = 'predictions'
+        """
+    )
+
+    connection.commit()
+    connection.close()
+
+
+# ============================================================
 # CREATE EXCEL FILE
 # ============================================================
 
@@ -404,7 +477,7 @@ def create_excel_file(dataframe):
 
 
 # ============================================================
-# LOAD DATABASE
+# LOAD DATA
 # ============================================================
 
 df = get_predictions()
@@ -420,7 +493,9 @@ st.markdown(
 )
 
 st.markdown(
-    '<div class="subtitle">Make your prediction and join the fun! 💕</div>',
+    '<div class="subtitle">'
+    'Make your prediction and join the fun! 💕'
+    '</div>',
     unsafe_allow_html=True
 )
 
@@ -445,7 +520,9 @@ form_tab, gender_tab, admin_tab = st.tabs(
 with form_tab:
 
     st.markdown(
-        '<div class="small-heading">🎊 Make Your Prediction</div>',
+        '<div class="small-heading">'
+        '🎊 Make Your Prediction'
+        '</div>',
         unsafe_allow_html=True
     )
 
@@ -453,17 +530,10 @@ with form_tab:
         "Fill in your prediction below."
     )
 
-
-    # IMPORTANT:
-    # A new form key is generated after every successful
-    # submission. This forces Streamlit to create a new form
-    # with completely empty widgets.
-
     current_form_key = (
         f"baby_prediction_form_"
         f"{st.session_state.form_reset}"
     )
-
 
     with st.form(
         current_form_key
@@ -509,7 +579,10 @@ with form_tab:
 
         message = st.text_area(
             "💌 Message for the Parents",
-            placeholder="Write your wishes for the parents and baby..."
+            placeholder=(
+                "Write your wishes for the parents "
+                "and baby..."
+            )
         )
 
         submitted = st.form_submit_button(
@@ -533,10 +606,6 @@ with form_tab:
         clean_message = message.strip()
 
 
-        # ----------------------------------------------------
-        # VALIDATION
-        # ----------------------------------------------------
-
         if not clean_guest_name:
 
             st.error(
@@ -556,11 +625,6 @@ with form_tab:
                 if gender_vote.startswith("Boy")
                 else "Girl"
             )
-
-
-            # ------------------------------------------------
-            # SAVE TO DATABASE
-            # ------------------------------------------------
 
             result = submit_prediction(
 
@@ -587,9 +651,6 @@ with form_tab:
             # =================================================
 
             if result.get("success"):
-
-                # Save confirmation BEFORE rerun.
-                # Session state survives the rerun.
 
                 st.session_state[
                     "submission_confirmation"
@@ -619,33 +680,14 @@ with form_tab:
                         clean_message
                 }
 
-
-                # Clear cached database results.
-
                 st.cache_data.clear()
 
-
-                # Change form key.
-                #
-                # On the next Streamlit run this creates
-                # an entirely NEW form with empty fields.
-
+                # New form key = empty form
                 st.session_state.form_reset += 1
 
-
-                # IMPORTANT:
-                #
-                # Rerun immediately.
-                #
-                # Do not put st.success(), st.balloons()
-                # or another widget before this rerun.
-
+                # Rerun immediately
                 st.rerun()
 
-
-            # =================================================
-            # DUPLICATE
-            # =================================================
 
             elif result.get("duplicate"):
 
@@ -658,23 +700,10 @@ with form_tab:
                 )
 
 
-            # =================================================
-            # DATABASE ERROR
-            # =================================================
-
             else:
 
                 st.error(
                     "❌ Unable to save your prediction."
-                )
-
-                st.code(
-                    str(
-                        result.get(
-                            "error",
-                            "Unknown error"
-                        )
-                    )
                 )
 
 
@@ -690,12 +719,12 @@ with form_tab:
             "submission_confirmation"
         ]
 
-
         st.divider()
 
-
         st.markdown(
-            '<div class="small-heading">💝 Your Submitted Details</div>',
+            '<div class="small-heading">'
+            '💝 Your Submitted Details'
+            '</div>',
             unsafe_allow_html=True
         )
 
@@ -703,30 +732,15 @@ with form_tab:
             "Your prediction has been submitted successfully."
         )
 
-
-        # ----------------------------------------------------
-        # GUEST NAME
-        # ----------------------------------------------------
-
         st.info(
             f"👤 **Guest Name:** "
             f"{submission['guest_name']}"
         )
 
-
-        # ----------------------------------------------------
-        # ATTENDANCE
-        # ----------------------------------------------------
-
         st.write(
             f"✅ **Attending:** "
             f"{submission['attending']}"
         )
-
-
-        # ----------------------------------------------------
-        # GENDER
-        # ----------------------------------------------------
 
         if submission["gender"] == "Boy":
 
@@ -742,20 +756,10 @@ with form_tab:
                 "💗 Girl 👧"
             )
 
-
-        # ----------------------------------------------------
-        # DATE
-        # ----------------------------------------------------
-
         st.write(
             f"📅 **Predicted Arrival Date:** "
             f"{submission['guessed_date']}"
         )
-
-
-        # ----------------------------------------------------
-        # BOY NAME
-        # ----------------------------------------------------
 
         if submission["boy_name"]:
 
@@ -764,22 +768,12 @@ with form_tab:
                 f"{submission['boy_name']}"
             )
 
-
-        # ----------------------------------------------------
-        # GIRL NAME
-        # ----------------------------------------------------
-
         if submission["girl_name"]:
 
             st.write(
                 f"👧 **Baby Girl Name:** "
                 f"{submission['girl_name']}"
             )
-
-
-        # ----------------------------------------------------
-        # MESSAGE
-        # ----------------------------------------------------
 
         if submission["message"]:
 
@@ -790,7 +784,6 @@ with form_tab:
             st.info(
                 submission["message"]
             )
-
 
         st.success(
             "💕 Thank you for being part of our Baby Shower!"
@@ -804,7 +797,9 @@ with form_tab:
 with gender_tab:
 
     st.markdown(
-        '<div class="small-heading">🔮 Baby Gender Predictions</div>',
+        '<div class="small-heading">'
+        '🔮 Baby Gender Predictions'
+        '</div>',
         unsafe_allow_html=True
     )
 
@@ -812,10 +807,6 @@ with gender_tab:
         "What is everyone guessing? 💙💗"
     )
 
-
-    # ========================================================
-    # VOTES
-    # ========================================================
 
     total_votes = len(df)
 
@@ -840,20 +831,14 @@ with gender_tab:
         girl_votes = 0
 
 
-    # ========================================================
-    # PERCENTAGES
-    # ========================================================
-
     if total_votes > 0:
 
         boy_percentage = (
-            boy_votes /
-            total_votes
+            boy_votes / total_votes
         ) * 100
 
         girl_percentage = (
-            girl_votes /
-            total_votes
+            girl_votes / total_votes
         ) * 100
 
     else:
@@ -863,11 +848,10 @@ with gender_tab:
 
 
     # ========================================================
-    # SUMMARY
+    # METRICS
     # ========================================================
 
     col1, col2 = st.columns(2)
-
 
     with col1:
 
@@ -877,7 +861,6 @@ with gender_tab:
             f"{boy_votes} votes"
         )
 
-
     with col2:
 
         st.metric(
@@ -885,7 +868,6 @@ with gender_tab:
             f"{girl_percentage:.1f}%",
             f"{girl_votes} votes"
         )
-
 
     st.metric(
         "🍼 Total Predictions",
@@ -897,29 +879,25 @@ with gender_tab:
 
 
     # ========================================================
-    # PREDICTION SPLIT
+    # BOY BAR
     # ========================================================
-
-    st.subheader(
-        "💙💗 Prediction Split"
-    )
-
-
-    # --------------------------------------------------------
-    # BABY BOY
-    # --------------------------------------------------------
 
     st.markdown(
         f"""
         <div class="prediction-label">
-            <span class="boy-label">💙 Baby Boy</span>
-            <span>{boy_percentage:.1f}%</span>
+            <span class="boy-label">
+                💙 Baby Boy
+            </span>
+
+            <span>
+                {boy_percentage:.1f}%
+            </span>
         </div>
 
         <div class="prediction-bar-container boy-bar-background">
             <div
                 class="prediction-bar boy-bar"
-                style="width: {boy_percentage:.1f}%;">
+                style="width:{boy_percentage:.1f}%;">
             </div>
         </div>
         """,
@@ -927,21 +905,26 @@ with gender_tab:
     )
 
 
-    # --------------------------------------------------------
-    # BABY GIRL
-    # --------------------------------------------------------
+    # ========================================================
+    # GIRL BAR
+    # ========================================================
 
     st.markdown(
         f"""
         <div class="prediction-label">
-            <span class="girl-label">💗 Baby Girl</span>
-            <span>{girl_percentage:.1f}%</span>
+            <span class="girl-label">
+                💗 Baby Girl
+            </span>
+
+            <span>
+                {girl_percentage:.1f}%
+            </span>
         </div>
 
         <div class="prediction-bar-container girl-bar-background">
             <div
                 class="prediction-bar girl-bar"
-                style="width: {girl_percentage:.1f}%;">
+                style="width:{girl_percentage:.1f}%;">
             </div>
         </div>
         """,
@@ -953,7 +936,7 @@ with gender_tab:
 
 
     # ========================================================
-    # DONUT CHART
+    # DONUT
     # ========================================================
 
     if total_votes > 0:
@@ -975,7 +958,6 @@ with gender_tab:
                     hole=0.60,
 
                     marker=dict(
-
                         colors=[
                             "#4DA6FF",
                             "#FF69B4"
@@ -1042,17 +1024,13 @@ with gender_tab:
 
 
         st.plotly_chart(
-
             fig,
-
             use_container_width=True,
-
             config={
                 "displayModeBar": False,
                 "responsive": True
             }
         )
-
 
     else:
 
@@ -1060,10 +1038,6 @@ with gender_tab:
             "👶 Waiting for the first prediction..."
         )
 
-
-    # ========================================================
-    # REFRESH
-    # ========================================================
 
     if st.button(
         "🔄 Refresh Predictions",
@@ -1077,7 +1051,7 @@ with gender_tab:
 
 
 # ============================================================
-# TAB 3 — PRIVATE DASHBOARD
+# TAB 3 — PRIVATE ADMIN
 # ============================================================
 
 with admin_tab:
@@ -1086,13 +1060,12 @@ with admin_tab:
     # LOGIN
     # ========================================================
 
-    if not st.session_state.get(
-        "admin_authenticated",
-        False
-    ):
+    if not st.session_state.admin_authenticated:
 
         st.markdown(
-            '<div class="small-heading">🔐 Private Dashboard</div>',
+            '<div class="small-heading">'
+            '🔐 Private Dashboard'
+            '</div>',
             unsafe_allow_html=True
         )
 
@@ -1100,13 +1073,11 @@ with admin_tab:
             "Admin access only."
         )
 
-
         password = st.text_input(
             "Admin Password",
             type="password",
             key="admin_password"
         )
-
 
         if st.button(
             "🔓 Unlock Dashboard",
@@ -1139,7 +1110,9 @@ with admin_tab:
     else:
 
         st.markdown(
-            '<div class="small-heading">🔐 Private Dashboard</div>',
+            '<div class="small-heading">'
+            '🔐 Private Dashboard'
+            '</div>',
             unsafe_allow_html=True
         )
 
@@ -1156,13 +1129,11 @@ with admin_tab:
             "👥 Attendance"
         )
 
-
         attending_yes = int(
             (
                 df["Attending"] == "Yes"
             ).sum()
         )
-
 
         attending_no = int(
             (
@@ -1170,97 +1141,27 @@ with admin_tab:
             ).sum()
         )
 
+        c1, c2, c3 = st.columns(3)
 
-        st.metric(
-            "👥 Total Guests",
-            len(df)
-        )
+        with c1:
 
-
-        st.metric(
-            "✅ Attending",
-            attending_yes
-        )
-
-
-        st.metric(
-            "❌ Not Attending",
-            attending_no
-        )
-
-
-        st.divider()
-
-
-        # ====================================================
-        # BOY NAMES
-        # ====================================================
-
-        st.subheader(
-            "👦 Baby Boy Name Suggestions"
-        )
-
-
-        boy_names = df[
-            "Baby Boy Name"
-        ].dropna()
-
-
-        boy_names = [
-            str(name).strip()
-            for name in boy_names
-            if str(name).strip()
-        ]
-
-
-        if boy_names:
-
-            for name in boy_names:
-
-                st.write(
-                    f"• {name}"
-                )
-
-        else:
-
-            st.info(
-                "No boy name suggestions yet."
+            st.metric(
+                "👥 Total Guests",
+                len(df)
             )
 
+        with c2:
 
-        # ====================================================
-        # GIRL NAMES
-        # ====================================================
+            st.metric(
+                "✅ Attending",
+                attending_yes
+            )
 
-        st.subheader(
-            "👧 Baby Girl Name Suggestions"
-        )
+        with c3:
 
-
-        girl_names = df[
-            "Baby Girl Name"
-        ].dropna()
-
-
-        girl_names = [
-            str(name).strip()
-            for name in girl_names
-            if str(name).strip()
-        ]
-
-
-        if girl_names:
-
-            for name in girl_names:
-
-                st.write(
-                    f"• {name}"
-                )
-
-        else:
-
-            st.info(
-                "No girl name suggestions yet."
+            st.metric(
+                "❌ Not Attending",
+                attending_no
             )
 
 
@@ -1268,7 +1169,82 @@ with admin_tab:
 
 
         # ====================================================
-        # ALL RESPONSES
+        # NAME SUGGESTIONS
+        # ====================================================
+
+        st.subheader(
+            "👶 Name Suggestions"
+        )
+
+        name_col1, name_col2 = st.columns(2)
+
+        with name_col1:
+
+            st.markdown(
+                "### 👦 Baby Boy"
+            )
+
+            boy_names = df[
+                "Baby Boy Name"
+            ].dropna()
+
+            boy_names = [
+                str(name).strip()
+                for name in boy_names
+                if str(name).strip()
+            ]
+
+            if boy_names:
+
+                for name in boy_names:
+
+                    st.write(
+                        f"• {name}"
+                    )
+
+            else:
+
+                st.info(
+                    "No boy name suggestions yet."
+                )
+
+
+        with name_col2:
+
+            st.markdown(
+                "### 👧 Baby Girl"
+            )
+
+            girl_names = df[
+                "Baby Girl Name"
+            ].dropna()
+
+            girl_names = [
+                str(name).strip()
+                for name in girl_names
+                if str(name).strip()
+            ]
+
+            if girl_names:
+
+                for name in girl_names:
+
+                    st.write(
+                        f"• {name}"
+                    )
+
+            else:
+
+                st.info(
+                    "No girl name suggestions yet."
+                )
+
+
+        st.divider()
+
+
+        # ====================================================
+        # GUEST RESPONSES
         # ====================================================
 
         st.subheader(
@@ -1278,9 +1254,18 @@ with admin_tab:
 
         if not df.empty:
 
-            display_df = df[
+            st.caption(
+                "☑️ Select one or more guests to delete."
+            )
+
+
+            # ------------------------------------------------
+            # CREATE EDITABLE SELECTION TABLE
+            # ------------------------------------------------
+
+            selection_df = df[
                 [
-                    "Timestamp",
+                    "id",
                     "Guest Name",
                     "Attending",
                     "Gender Vote",
@@ -1289,46 +1274,191 @@ with admin_tab:
                     "Baby Girl Name",
                     "Message"
                 ]
+            ].copy()
+
+
+            selection_df.insert(
+                0,
+                "Delete",
+                False
+            )
+
+
+            edited_df = st.data_editor(
+
+                selection_df,
+
+                use_container_width=True,
+
+                hide_index=True,
+
+                disabled=[
+                    "id",
+                    "Guest Name",
+                    "Attending",
+                    "Gender Vote",
+                    "Date",
+                    "Baby Boy Name",
+                    "Baby Girl Name",
+                    "Message"
+                ],
+
+                column_config={
+
+                    "Delete":
+                        st.column_config.CheckboxColumn(
+                            "☑️ Delete",
+                            help=(
+                                "Select this guest "
+                                "for deletion."
+                            ),
+                            default=False
+                        ),
+
+                    "id":
+                        st.column_config.NumberColumn(
+                            "ID",
+                            width="small"
+                        ),
+
+                    "Guest Name":
+                        st.column_config.TextColumn(
+                            "Guest Name"
+                        ),
+
+                    "Attending":
+                        st.column_config.TextColumn(
+                            "Attending"
+                        ),
+
+                    "Gender Vote":
+                        st.column_config.TextColumn(
+                            "Gender Vote"
+                        ),
+
+                    "Date":
+                        st.column_config.TextColumn(
+                            "Date"
+                        ),
+
+                    "Baby Boy Name":
+                        st.column_config.TextColumn(
+                            "Baby Boy Name"
+                        ),
+
+                    "Baby Girl Name":
+                        st.column_config.TextColumn(
+                            "Baby Girl Name"
+                        ),
+
+                    "Message":
+                        st.column_config.TextColumn(
+                            "Message"
+                        )
+                },
+
+                key="guest_delete_editor"
+            )
+
+
+            selected_rows = edited_df[
+                edited_df["Delete"] == True
             ]
 
 
-            st.dataframe(
-                display_df,
-                use_container_width=True,
-                hide_index=True
-            )
+            selected_ids = selected_rows[
+                "id"
+            ].tolist()
 
 
-            # =================================================
-            # EXCEL DOWNLOAD
-            # =================================================
+            # ------------------------------------------------
+            # DELETE SELECTED
+            # ------------------------------------------------
 
-            st.divider()
+            if selected_ids:
 
-            st.subheader(
-                "📥 Download Guest Data"
-            )
+                st.warning(
+                    f"⚠️ {len(selected_ids)} "
+                    f"entry/entries selected."
+                )
 
-            st.caption(
-                "Download all guest responses as an Excel file."
-            )
+                if st.button(
+                    "🗑️ Delete Selected Entries",
+                    key="delete_selected",
+                    use_container_width=True
+                ):
+
+                    st.session_state[
+                        "confirm_delete_selected"
+                    ] = True
+
+                    st.rerun()
 
 
-            excel_file = create_excel_file(
-                df
-            )
+            # ------------------------------------------------
+            # CONFIRM DELETE
+            # ------------------------------------------------
+
+            if st.session_state[
+                "confirm_delete_selected"
+            ]:
+
+                st.error(
+                    f"⚠️ You are about to permanently "
+                    f"delete {len(selected_ids)} "
+                    f"selected entry/entries."
+                )
+
+                delete_col1, delete_col2 = st.columns(2)
 
 
-            st.download_button(
-                label="📊 Download Excel",
-                data=excel_file,
-                file_name="Baby_Shower_Guest_Responses.xlsx",
-                mime=(
-                    "application/vnd.openxmlformats-officedocument."
-                    "spreadsheetml.sheet"
-                ),
-                use_container_width=True
-            )
+                with delete_col1:
+
+                    if st.button(
+                        "❌ Cancel",
+                        key="cancel_delete_selected",
+                        use_container_width=True
+                    ):
+
+                        st.session_state[
+                            "confirm_delete_selected"
+                        ] = False
+
+                        st.rerun()
+
+
+                with delete_col2:
+
+                    if st.button(
+                        "🗑️ YES, DELETE",
+                        key="confirm_delete_selected",
+                        use_container_width=True
+                    ):
+
+                        if selected_ids:
+
+                            deleted_count = (
+                                delete_selected_rows(
+                                    selected_ids
+                                )
+                            )
+
+                            st.cache_data.clear()
+
+                            st.session_state[
+                                "confirm_delete_selected"
+                            ] = False
+
+                            st.session_state[
+                                "submission_confirmation"
+                            ] = None
+
+                            st.success(
+                                f"✅ {deleted_count} "
+                                f"entry/entries deleted."
+                            )
+
+                            st.rerun()
 
 
         else:
@@ -1338,12 +1468,145 @@ with admin_tab:
             )
 
 
+        # ====================================================
+        # EXCEL DOWNLOAD
+        # ====================================================
+
         st.divider()
 
+        st.subheader(
+            "📥 Download Guest Data"
+        )
+
+        if not df.empty:
+
+            excel_file = create_excel_file(
+                df
+            )
+
+            st.download_button(
+                label="📊 Download Excel",
+                data=excel_file,
+                file_name=(
+                    "Baby_Shower_Guest_Responses.xlsx"
+                ),
+                mime=(
+                    "application/vnd.openxmlformats-officedocument."
+                    "spreadsheetml.sheet"
+                ),
+                use_container_width=True
+            )
+
+        else:
+
+            st.info(
+                "No data available to download."
+            )
+
 
         # ====================================================
-        # REFRESH DASHBOARD
+        # DANGER ZONE
         # ====================================================
+
+        st.divider()
+
+        st.subheader(
+            "⚠️ Danger Zone"
+        )
+
+        st.warning(
+            "Reset Entire App permanently deletes "
+            "ALL guest predictions, attendance, "
+            "gender votes, name suggestions and messages."
+        )
+
+
+        if not st.session_state[
+            "confirm_reset_app"
+        ]:
+
+            if st.button(
+                "🧹 Reset Entire App",
+                key="reset_entire_app",
+                use_container_width=True
+            ):
+
+                st.session_state[
+                    "confirm_reset_app"
+                ] = True
+
+                st.rerun()
+
+
+        else:
+
+            st.error(
+                "⚠️ THIS WILL DELETE EVERYTHING."
+            )
+
+            st.write(
+                "All guest responses will be permanently removed."
+            )
+
+
+            reset_col1, reset_col2 = st.columns(2)
+
+
+            with reset_col1:
+
+                if st.button(
+                    "❌ Cancel",
+                    key="cancel_reset_app",
+                    use_container_width=True
+                ):
+
+                    st.session_state[
+                        "confirm_reset_app"
+                    ] = False
+
+                    st.rerun()
+
+
+            with reset_col2:
+
+                if st.button(
+                    "🧹 YES, RESET EVERYTHING",
+                    key="confirm_reset_app",
+                    use_container_width=True
+                ):
+
+                    reset_entire_database()
+
+                    st.cache_data.clear()
+
+                    st.session_state[
+                        "submission_confirmation"
+                    ] = None
+
+                    st.session_state[
+                        "form_reset"
+                    ] += 1
+
+                    st.session_state[
+                        "confirm_reset_app"
+                    ] = False
+
+                    st.session_state[
+                        "confirm_delete_selected"
+                    ] = False
+
+                    st.success(
+                        "✅ App has been completely reset."
+                    )
+
+                    st.rerun()
+
+
+        # ====================================================
+        # REFRESH
+        # ====================================================
+
+        st.divider()
 
         if st.button(
             "🔄 Refresh Dashboard",
