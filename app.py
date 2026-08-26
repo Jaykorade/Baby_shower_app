@@ -93,6 +93,53 @@ st.markdown(
         margin-bottom: 0.4rem;
     }
 
+    .prediction-label {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 0.95rem;
+        font-weight: 600;
+        margin-bottom: 5px;
+    }
+
+    .prediction-bar-container {
+        width: 100%;
+        height: 14px;
+        border-radius: 20px;
+        overflow: hidden;
+        margin-bottom: 18px;
+    }
+
+    .prediction-bar {
+        height: 100%;
+        border-radius: 20px;
+        transition: width 0.5s ease;
+    }
+
+    .boy-bar-background {
+        background: #e5f2ff;
+    }
+
+    .boy-bar {
+        background: #4DA6FF;
+    }
+
+    .girl-bar-background {
+        background: #ffe8f2;
+    }
+
+    .girl-bar {
+        background: #FF69B4;
+    }
+
+    .boy-label {
+        color: #1676d2;
+    }
+
+    .girl-label {
+        color: #e7549b;
+    }
+
     .footer {
         text-align: center;
         color: #999999;
@@ -119,6 +166,10 @@ st.markdown(
 
         .small-heading {
             font-size: 1.2rem;
+        }
+
+        .prediction-label {
+            font-size: 0.9rem;
         }
 
     }
@@ -403,11 +454,6 @@ with form_tab:
     )
 
 
-    # --------------------------------------------------------
-    # FORM
-    # --------------------------------------------------------
-    # Changing the form key after submission resets all fields.
-
     with st.form(
         f"baby_prediction_form_{st.session_state.form_reset}"
     ):
@@ -476,10 +522,6 @@ with form_tab:
         clean_message = message.strip()
 
 
-        # ----------------------------------------------------
-        # VALIDATION
-        # ----------------------------------------------------
-
         if not clean_guest_name:
 
             st.error(
@@ -501,10 +543,6 @@ with form_tab:
             )
 
 
-            # ------------------------------------------------
-            # SAVE TO SQLITE
-            # ------------------------------------------------
-
             result = submit_prediction(
 
                 guest_name=clean_guest_name,
@@ -525,19 +563,9 @@ with form_tab:
             )
 
 
-            # ------------------------------------------------
-            # SUCCESS
-            # ------------------------------------------------
-
             if result.get("success"):
 
-                # Clear cached database data.
-
                 st.cache_data.clear()
-
-
-                # Save the submitted information so it
-                # remains visible after the form resets.
 
                 st.session_state[
                     "submission_confirmation"
@@ -567,14 +595,7 @@ with form_tab:
                         clean_message
                 }
 
-
-                # ------------------------------------------------
-                # RESET FORM
-                # ------------------------------------------------
-                # Changing the form key resets all input fields.
-
                 st.session_state.form_reset += 1
-
 
                 st.balloons()
 
@@ -582,10 +603,6 @@ with form_tab:
                     "🎉 Your prediction has been submitted successfully!"
                 )
 
-
-            # ------------------------------------------------
-            # DUPLICATE
-            # ------------------------------------------------
 
             elif result.get("duplicate"):
 
@@ -597,10 +614,6 @@ with form_tab:
                     "Each guest can submit only once."
                 )
 
-
-            # ------------------------------------------------
-            # ERROR
-            # ------------------------------------------------
 
             else:
 
@@ -644,29 +657,17 @@ with form_tab:
         )
 
 
-        # ----------------------------------------------------
-        # GUEST NAME
-        # ----------------------------------------------------
-
         st.info(
             f"👤 **Guest Name:** "
             f"{submission['guest_name']}"
         )
 
 
-        # ----------------------------------------------------
-        # ATTENDANCE
-        # ----------------------------------------------------
-
         st.write(
             f"✅ **Attending:** "
             f"{submission['attending']}"
         )
 
-
-        # ----------------------------------------------------
-        # GENDER
-        # ----------------------------------------------------
 
         if submission["gender"] == "Boy":
 
@@ -683,19 +684,11 @@ with form_tab:
             )
 
 
-        # ----------------------------------------------------
-        # DATE
-        # ----------------------------------------------------
-
         st.write(
             f"📅 **Predicted Arrival Date:** "
             f"{submission['guessed_date']}"
         )
 
-
-        # ----------------------------------------------------
-        # BOY NAME
-        # ----------------------------------------------------
 
         if submission["boy_name"]:
 
@@ -705,10 +698,6 @@ with form_tab:
             )
 
 
-        # ----------------------------------------------------
-        # GIRL NAME
-        # ----------------------------------------------------
-
         if submission["girl_name"]:
 
             st.write(
@@ -716,10 +705,6 @@ with form_tab:
                 f"{submission['girl_name']}"
             )
 
-
-        # ----------------------------------------------------
-        # MESSAGE
-        # ----------------------------------------------------
 
         if submission["message"]:
 
@@ -753,9 +738,9 @@ with gender_tab:
     )
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # VOTES
-    # --------------------------------------------------------
+    # ========================================================
 
     total_votes = len(df)
 
@@ -780,9 +765,9 @@ with gender_tab:
         girl_votes = 0
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # PERCENTAGES
-    # --------------------------------------------------------
+    # ========================================================
 
     if total_votes > 0:
 
@@ -802,9 +787,9 @@ with gender_tab:
         girl_percentage = 0
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # SUMMARY
-    # --------------------------------------------------------
+    # ========================================================
 
     col1, col2 = st.columns(2)
 
@@ -836,47 +821,65 @@ with gender_tab:
     st.divider()
 
 
-    # --------------------------------------------------------
-    # PROGRESS
-    # --------------------------------------------------------
+    # ========================================================
+    # PREDICTION SPLIT
+    # ========================================================
 
     st.subheader(
         "💙💗 Prediction Split"
     )
 
 
-    st.write(
-        f"💙 Baby Boy — {boy_percentage:.1f}%"
+    # --------------------------------------------------------
+    # BABY BOY BAR
+    # --------------------------------------------------------
+
+    st.markdown(
+        f"""
+        <div class="prediction-label">
+            <span class="boy-label">💙 Baby Boy</span>
+            <span>{boy_percentage:.1f}%</span>
+        </div>
+
+        <div class="prediction-bar-container boy-bar-background">
+            <div
+                class="prediction-bar boy-bar"
+                style="width: {boy_percentage:.1f}%;">
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
 
-    st.progress(
-        int(
-            round(
-                boy_percentage
-            )
-        )
-    )
 
+    # --------------------------------------------------------
+    # BABY GIRL BAR
+    # --------------------------------------------------------
 
-    st.write(
-        f"💗 Baby Girl — {girl_percentage:.1f}%"
-    )
+    st.markdown(
+        f"""
+        <div class="prediction-label">
+            <span class="girl-label">💗 Baby Girl</span>
+            <span>{girl_percentage:.1f}%</span>
+        </div>
 
-    st.progress(
-        int(
-            round(
-                girl_percentage
-            )
-        )
+        <div class="prediction-bar-container girl-bar-background">
+            <div
+                class="prediction-bar girl-bar"
+                style="width: {girl_percentage:.1f}%;">
+            </div>
+        </div>
+        """,
+        unsafe_allow_html=True
     )
 
 
     st.divider()
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # DONUT CHART
-    # --------------------------------------------------------
+    # ========================================================
 
     if total_votes > 0:
 
@@ -983,9 +986,9 @@ with gender_tab:
         )
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # REFRESH
-    # --------------------------------------------------------
+    # ========================================================
 
     if st.button(
         "🔄 Refresh Predictions",
@@ -1004,9 +1007,9 @@ with gender_tab:
 
 with admin_tab:
 
-    # --------------------------------------------------------
+    # ========================================================
     # LOGIN
-    # --------------------------------------------------------
+    # ========================================================
 
     if not st.session_state.get(
         "admin_authenticated",
@@ -1054,9 +1057,9 @@ with admin_tab:
                 )
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # ADMIN DASHBOARD
-    # --------------------------------------------------------
+    # ========================================================
 
     else:
 
