@@ -40,24 +40,22 @@ st.set_page_config(
 # SESSION STATE
 # ============================================================
 
-if "form_reset" not in st.session_state:
-    st.session_state.form_reset = 0
+DEFAULT_STATE = {
+    "form_reset": 0,
+    "submission_confirmation": None,
+    "admin_authenticated": False,
+    "confirm_delete_selected": False,
+    "confirm_reset_app": False,
+    "delete_selector_version": 0,
+}
 
-if "submission_confirmation" not in st.session_state:
-    st.session_state.submission_confirmation = None
-
-if "admin_authenticated" not in st.session_state:
-    st.session_state.admin_authenticated = False
-
-if "confirm_delete_selected" not in st.session_state:
-    st.session_state.confirm_delete_selected = False
-
-if "confirm_reset_app" not in st.session_state:
-    st.session_state.confirm_reset_app = False
+for key, value in DEFAULT_STATE.items():
+    if key not in st.session_state:
+        st.session_state[key] = value
 
 
 # ============================================================
-# MOBILE-FRIENDLY CSS
+# MOBILE FRIENDLY CSS
 # ============================================================
 
 st.markdown(
@@ -74,7 +72,7 @@ st.markdown(
 
     .block-container {
         max-width: 900px;
-        padding-top: 3rem !important;
+        padding-top: 2.5rem !important;
         padding-left: 1rem;
         padding-right: 1rem;
         padding-bottom: 2rem;
@@ -82,10 +80,9 @@ st.markdown(
 
     .main-title {
         text-align: center;
-        font-size: 2.3rem;
+        font-size: 2.25rem;
         font-weight: 800;
         color: #5b4b8a;
-        margin-top: 0.3rem;
         margin-bottom: 4px;
         line-height: 1.2;
     }
@@ -152,6 +149,21 @@ st.markdown(
         color: #e7549b;
     }
 
+    .success-card {
+        padding: 14px;
+        border-radius: 12px;
+        background: #f4fff7;
+        border: 1px solid #b7e8c3;
+        margin-top: 10px;
+    }
+
+    .danger-card {
+        padding: 14px;
+        border-radius: 12px;
+        background: #fff5f5;
+        border: 1px solid #ffcaca;
+    }
+
     .footer {
         text-align: center;
         color: #999999;
@@ -160,24 +172,16 @@ st.markdown(
         font-size: 0.85rem;
     }
 
-    .danger-box {
-        padding: 12px;
-        border-radius: 10px;
-        background: #fff1f1;
-        border: 1px solid #ffcccc;
-        margin-bottom: 12px;
-    }
-
     @media (max-width: 600px) {
 
         .block-container {
-            padding-top: 2.5rem !important;
-            padding-left: 0.8rem;
-            padding-right: 0.8rem;
+            padding-top: 2.3rem !important;
+            padding-left: 0.75rem;
+            padding-right: 0.75rem;
         }
 
         .main-title {
-            font-size: 1.9rem;
+            font-size: 1.85rem;
         }
 
         .subtitle {
@@ -185,11 +189,11 @@ st.markdown(
         }
 
         .small-heading {
-            font-size: 1.2rem;
+            font-size: 1.15rem;
         }
 
         .prediction-label {
-            font-size: 0.9rem;
+            font-size: 0.88rem;
         }
 
     }
@@ -201,11 +205,10 @@ st.markdown(
 
 
 # ============================================================
-# DATABASE CONNECTION
+# DATABASE
 # ============================================================
 
 def get_connection():
-
     connection = sqlite3.connect(
         DB_PATH,
         check_same_thread=False
@@ -215,10 +218,6 @@ def get_connection():
 
     return connection
 
-
-# ============================================================
-# INITIALIZE DATABASE
-# ============================================================
 
 def initialize_database():
 
@@ -247,7 +246,6 @@ def initialize_database():
             baby_girl_name TEXT,
 
             message TEXT
-
         )
         """
     )
@@ -260,49 +258,42 @@ initialize_database()
 
 
 # ============================================================
-# GET PREDICTIONS
+# READ DATA
 # ============================================================
 
 @st.cache_data(
-    ttl=5,
+    ttl=3,
     show_spinner=False
 )
 def get_predictions():
 
     connection = get_connection()
 
-    dataframe = pd.read_sql_query(
-        """
-        SELECT
+    try:
 
-            id,
+        df = pd.read_sql_query(
+            """
+            SELECT
+                id,
+                timestamp AS Timestamp,
+                guest_name AS "Guest Name",
+                attending_yes_no AS Attending,
+                gender_vote AS "Gender Vote",
+                guessed_date AS Date,
+                baby_boy_name AS "Baby Boy Name",
+                baby_girl_name AS "Baby Girl Name",
+                message AS Message
+            FROM predictions
+            ORDER BY id ASC
+            """,
+            connection
+        )
 
-            timestamp AS Timestamp,
+    finally:
 
-            guest_name AS "Guest Name",
+        connection.close()
 
-            attending_yes_no AS Attending,
-
-            gender_vote AS "Gender Vote",
-
-            guessed_date AS Date,
-
-            baby_boy_name AS "Baby Boy Name",
-
-            baby_girl_name AS "Baby Girl Name",
-
-            message AS Message
-
-        FROM predictions
-
-        ORDER BY id ASC
-        """,
-        connection
-    )
-
-    connection.close()
-
-    return dataframe
+    return df
 
 
 # ============================================================
@@ -321,14 +312,13 @@ def submit_prediction(
 
     connection = get_connection()
 
-    cursor = connection.cursor()
-
     try:
+
+        cursor = connection.cursor()
 
         cursor.execute(
             """
             INSERT INTO predictions (
-
                 guest_name,
                 attending_yes_no,
                 gender_vote,
@@ -336,9 +326,7 @@ def submit_prediction(
                 baby_boy_name,
                 baby_girl_name,
                 message
-
             )
-
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -353,15 +341,12 @@ def submit_prediction(
         )
 
         connection.commit()
-        connection.close()
 
         return {
             "success": True
         }
 
     except sqlite3.IntegrityError:
-
-        connection.close()
 
         return {
             "success": False,
@@ -370,82 +355,99 @@ def submit_prediction(
 
     except Exception as error:
 
-        connection.close()
-
         return {
             "success": False,
             "error": str(error)
         }
 
+    finally:
+
+        connection.close()
+
 
 # ============================================================
-# DELETE SELECTED ROWS
+# DELETE SELECTED
 # ============================================================
 
 def delete_selected_rows(selected_ids):
 
     if not selected_ids:
-        return False
+        return 0
 
     connection = get_connection()
 
-    cursor = connection.cursor()
+    try:
 
-    placeholders = ",".join(
-        ["?"] * len(selected_ids)
-    )
+        cursor = connection.cursor()
 
-    cursor.execute(
-        f"""
-        DELETE FROM predictions
-        WHERE id IN ({placeholders})
-        """,
-        selected_ids
-    )
+        placeholders = ",".join(
+            ["?"] * len(selected_ids)
+        )
 
-    connection.commit()
+        cursor.execute(
+            f"""
+            DELETE FROM predictions
+            WHERE id IN ({placeholders})
+            """,
+            selected_ids
+        )
 
-    deleted_count = cursor.rowcount
+        deleted_count = cursor.rowcount
 
-    connection.close()
+        connection.commit()
 
-    return deleted_count
+        return deleted_count
+
+    finally:
+
+        connection.close()
 
 
 # ============================================================
-# RESET ENTIRE DATABASE
+# RESET ENTIRE APP
 # ============================================================
 
 def reset_entire_database():
 
     connection = get_connection()
 
-    cursor = connection.cursor()
+    try:
 
-    cursor.execute(
-        "DELETE FROM predictions"
-    )
+        cursor = connection.cursor()
 
-    cursor.execute(
-        """
-        DELETE FROM sqlite_sequence
-        WHERE name = 'predictions'
-        """
-    )
+        cursor.execute(
+            "DELETE FROM predictions"
+        )
 
-    connection.commit()
-    connection.close()
+        # Reset SQLite ID counter
+        try:
+
+            cursor.execute(
+                """
+                DELETE FROM sqlite_sequence
+                WHERE name = 'predictions'
+                """
+            )
+
+        except sqlite3.OperationalError:
+            pass
+
+        connection.commit()
+
+    finally:
+
+        connection.close()
 
 
 # ============================================================
-# CREATE EXCEL FILE
+# EXCEL EXPORT
 # ============================================================
 
 def create_excel_file(dataframe):
 
     output = BytesIO()
 
-    export_columns = [
+    columns = [
         "Timestamp",
         "Guest Name",
         "Attending",
@@ -457,7 +459,7 @@ def create_excel_file(dataframe):
     ]
 
     export_df = dataframe[
-        export_columns
+        columns
     ].copy()
 
     with pd.ExcelWriter(
@@ -484,7 +486,7 @@ df = get_predictions()
 
 
 # ============================================================
-# MAIN HEADER
+# HEADER
 # ============================================================
 
 st.markdown(
@@ -493,9 +495,11 @@ st.markdown(
 )
 
 st.markdown(
-    '<div class="subtitle">'
-    'Make your prediction and join the fun! 💕'
-    '</div>',
+    """
+    <div class="subtitle">
+        Make your prediction and join the fun! 💕
+    </div>
+    """,
     unsafe_allow_html=True
 )
 
@@ -520,24 +524,30 @@ form_tab, gender_tab, admin_tab = st.tabs(
 with form_tab:
 
     st.markdown(
-        '<div class="small-heading">'
-        '🎊 Make Your Prediction'
-        '</div>',
+        """
+        <div class="small-heading">
+            🎊 Make Your Prediction
+        </div>
+        """,
         unsafe_allow_html=True
     )
 
     st.caption(
-        "Fill in your prediction below."
+        "One submission per guest."
     )
 
-    current_form_key = (
-        f"baby_prediction_form_"
-        f"{st.session_state.form_reset}"
+
+    # ========================================================
+    # DYNAMIC FORM KEY
+    # ========================================================
+
+    form_key = (
+        "baby_prediction_form_"
+        + str(st.session_state.form_reset)
     )
 
-    with st.form(
-        current_form_key
-    ):
+
+    with st.form(form_key):
 
         guest_name = st.text_input(
             "Guest Name *",
@@ -569,20 +579,17 @@ with form_tab:
 
         baby_boy_name = st.text_input(
             "👦 Baby Boy Name Suggestion",
-            placeholder="Suggest a boy name"
+            placeholder="Suggest a baby boy name"
         )
 
         baby_girl_name = st.text_input(
             "👧 Baby Girl Name Suggestion",
-            placeholder="Suggest a girl name"
+            placeholder="Suggest a baby girl name"
         )
 
         message = st.text_area(
             "💌 Message for the Parents",
-            placeholder=(
-                "Write your wishes for the parents "
-                "and baby..."
-            )
+            placeholder="Write your wishes..."
         )
 
         submitted = st.form_submit_button(
@@ -592,30 +599,25 @@ with form_tab:
 
 
     # ========================================================
-    # PROCESS SUBMISSION
+    # SUBMISSION
     # ========================================================
 
     if submitted:
 
         clean_guest_name = guest_name.strip()
-
         clean_boy_name = baby_boy_name.strip()
-
         clean_girl_name = baby_girl_name.strip()
-
         clean_message = message.strip()
 
+
+        # ----------------------------------------------------
+        # VALIDATION
+        # ----------------------------------------------------
 
         if not clean_guest_name:
 
             st.error(
                 "Please enter your Guest Name."
-            )
-
-        elif guessed_date < date.today():
-
-            st.error(
-                "Please select a valid arrival date."
             )
 
         else:
@@ -625,6 +627,11 @@ with form_tab:
                 if gender_vote.startswith("Boy")
                 else "Girl"
             )
+
+
+            # ------------------------------------------------
+            # SAVE
+            # ------------------------------------------------
 
             result = submit_prediction(
 
@@ -646,11 +653,11 @@ with form_tab:
             )
 
 
-            # =================================================
+            # ------------------------------------------------
             # SUCCESS
-            # =================================================
+            # ------------------------------------------------
 
-            if result.get("success"):
+            if result["success"]:
 
                 st.session_state[
                     "submission_confirmation"
@@ -680,14 +687,26 @@ with form_tab:
                         clean_message
                 }
 
+
+                # Clear database cache
                 st.cache_data.clear()
 
-                # New form key = empty form
+
+                # IMPORTANT:
+                # New form key creates completely
+                # empty widgets after rerun.
+
                 st.session_state.form_reset += 1
 
-                # Rerun immediately
+
+                st.balloons()
+
                 st.rerun()
 
+
+            # ------------------------------------------------
+            # DUPLICATE
+            # ------------------------------------------------
 
             elif result.get("duplicate"):
 
@@ -700,36 +719,47 @@ with form_tab:
                 )
 
 
+            # ------------------------------------------------
+            # OTHER ERROR
+            # ------------------------------------------------
+
             else:
 
                 st.error(
                     "❌ Unable to save your prediction."
                 )
 
+                if result.get("error"):
+
+                    st.caption(
+                        str(result["error"])
+                    )
+
 
     # ========================================================
-    # SUBMISSION CONFIRMATION
+    # CONFIRMATION
     # ========================================================
 
-    if st.session_state.get(
+    submission = st.session_state.get(
         "submission_confirmation"
-    ):
+    )
 
-        submission = st.session_state[
-            "submission_confirmation"
-        ]
+
+    if submission:
 
         st.divider()
 
         st.markdown(
-            '<div class="small-heading">'
-            '💝 Your Submitted Details'
-            '</div>',
+            """
+            <div class="small-heading">
+                💝 Your Submitted Details
+            </div>
+            """,
             unsafe_allow_html=True
         )
 
-        st.caption(
-            "Your prediction has been submitted successfully."
+        st.success(
+            "🎉 Your prediction has been submitted successfully!"
         )
 
         st.info(
@@ -742,24 +772,25 @@ with form_tab:
             f"{submission['attending']}"
         )
 
+
         if submission["gender"] == "Boy":
 
             st.write(
-                "🔮 **Gender Prediction:** "
-                "💙 Boy 👦"
+                "🔮 **Gender Prediction:** 💙 Boy 👦"
             )
 
         else:
 
             st.write(
-                "🔮 **Gender Prediction:** "
-                "💗 Girl 👧"
+                "🔮 **Gender Prediction:** 💗 Girl 👧"
             )
+
 
         st.write(
             f"📅 **Predicted Arrival Date:** "
             f"{submission['guessed_date']}"
         )
+
 
         if submission["boy_name"]:
 
@@ -768,12 +799,14 @@ with form_tab:
                 f"{submission['boy_name']}"
             )
 
+
         if submission["girl_name"]:
 
             st.write(
                 f"👧 **Baby Girl Name:** "
                 f"{submission['girl_name']}"
             )
+
 
         if submission["message"]:
 
@@ -785,21 +818,24 @@ with form_tab:
                 submission["message"]
             )
 
+
         st.success(
             "💕 Thank you for being part of our Baby Shower!"
         )
 
 
 # ============================================================
-# TAB 2 — GENDER PREDICTION
+# TAB 2 — PUBLIC GENDER PREDICTION
 # ============================================================
 
 with gender_tab:
 
     st.markdown(
-        '<div class="small-heading">'
-        '🔮 Baby Gender Predictions'
-        '</div>',
+        """
+        <div class="small-heading">
+            🔮 Baby Gender Predictions
+        </div>
+        """,
         unsafe_allow_html=True
     )
 
@@ -808,10 +844,14 @@ with gender_tab:
     )
 
 
+    # ========================================================
+    # VOTE COUNTS
+    # ========================================================
+
     total_votes = len(df)
 
 
-    if total_votes > 0:
+    if total_votes:
 
         boy_votes = int(
             (
@@ -831,7 +871,11 @@ with gender_tab:
         girl_votes = 0
 
 
-    if total_votes > 0:
+    # ========================================================
+    # PERCENTAGES
+    # ========================================================
+
+    if total_votes:
 
         boy_percentage = (
             boy_votes / total_votes
@@ -851,9 +895,10 @@ with gender_tab:
     # METRICS
     # ========================================================
 
-    col1, col2 = st.columns(2)
+    metric1, metric2 = st.columns(2)
 
-    with col1:
+
+    with metric1:
 
         st.metric(
             "💙 Baby Boy",
@@ -861,13 +906,15 @@ with gender_tab:
             f"{boy_votes} votes"
         )
 
-    with col2:
+
+    with metric2:
 
         st.metric(
             "💗 Baby Girl",
             f"{girl_percentage:.1f}%",
             f"{girl_votes} votes"
         )
+
 
     st.metric(
         "🍼 Total Predictions",
@@ -879,12 +926,13 @@ with gender_tab:
 
 
     # ========================================================
-    # BOY BAR
+    # BOY PROGRESS
     # ========================================================
 
     st.markdown(
         f"""
         <div class="prediction-label">
+
             <span class="boy-label">
                 💙 Baby Boy
             </span>
@@ -892,13 +940,17 @@ with gender_tab:
             <span>
                 {boy_percentage:.1f}%
             </span>
+
         </div>
 
-        <div class="prediction-bar-container boy-bar-background">
+        <div class="prediction-bar-container
+                    boy-bar-background">
+
             <div
                 class="prediction-bar boy-bar"
-                style="width:{boy_percentage:.1f}%;">
+                style="width: {boy_percentage:.1f}%;">
             </div>
+
         </div>
         """,
         unsafe_allow_html=True
@@ -906,12 +958,13 @@ with gender_tab:
 
 
     # ========================================================
-    # GIRL BAR
+    # GIRL PROGRESS
     # ========================================================
 
     st.markdown(
         f"""
         <div class="prediction-label">
+
             <span class="girl-label">
                 💗 Baby Girl
             </span>
@@ -919,29 +972,33 @@ with gender_tab:
             <span>
                 {girl_percentage:.1f}%
             </span>
+
         </div>
 
-        <div class="prediction-bar-container girl-bar-background">
+        <div class="prediction-bar-container
+                    girl-bar-background">
+
             <div
                 class="prediction-bar girl-bar"
-                style="width:{girl_percentage:.1f}%;">
+                style="width: {girl_percentage:.1f}%;">
             </div>
+
         </div>
         """,
         unsafe_allow_html=True
     )
 
 
-    st.divider()
-
-
     # ========================================================
-    # DONUT
+    # DONUT CHART
     # ========================================================
 
-    if total_votes > 0:
+    if total_votes:
+
+        st.divider()
 
         fig = go.Figure(
+
             data=[
                 go.Pie(
 
@@ -955,9 +1012,10 @@ with gender_tab:
                         girl_votes
                     ],
 
-                    hole=0.60,
+                    hole=0.62,
 
                     marker=dict(
+
                         colors=[
                             "#4DA6FF",
                             "#FF69B4"
@@ -991,29 +1049,22 @@ with gender_tab:
 
         fig.update_layout(
 
-            height=400,
-
-            autosize=True,
+            height=390,
 
             showlegend=True,
 
             legend=dict(
-
                 orientation="h",
-
                 yanchor="bottom",
-
                 y=-0.15,
-
                 xanchor="center",
-
                 x=0.5
             ),
 
             margin=dict(
                 l=5,
                 r=5,
-                t=20,
+                t=15,
                 b=70
             ),
 
@@ -1039,9 +1090,13 @@ with gender_tab:
         )
 
 
+    # ========================================================
+    # REFRESH
+    # ========================================================
+
     if st.button(
         "🔄 Refresh Predictions",
-        key="refresh_gender",
+        key="public_refresh",
         use_container_width=True
     ):
 
@@ -1056,16 +1111,19 @@ with gender_tab:
 
 with admin_tab:
 
+
     # ========================================================
-    # LOGIN
+    # ADMIN LOGIN
     # ========================================================
 
     if not st.session_state.admin_authenticated:
 
         st.markdown(
-            '<div class="small-heading">'
-            '🔐 Private Dashboard'
-            '</div>',
+            """
+            <div class="small-heading">
+                🔐 Private Dashboard
+            </div>
+            """,
             unsafe_allow_html=True
         )
 
@@ -1073,15 +1131,17 @@ with admin_tab:
             "Admin access only."
         )
 
+
         password = st.text_input(
             "Admin Password",
             type="password",
-            key="admin_password"
+            key="admin_password_input"
         )
+
 
         if st.button(
             "🔓 Unlock Dashboard",
-            key="admin_unlock",
+            key="admin_login_button",
             use_container_width=True
         ):
 
@@ -1110,9 +1170,11 @@ with admin_tab:
     else:
 
         st.markdown(
-            '<div class="small-heading">'
-            '🔐 Private Dashboard'
-            '</div>',
+            """
+            <div class="small-heading">
+                🔐 Private Dashboard
+            </div>
+            """,
             unsafe_allow_html=True
         )
 
@@ -1129,11 +1191,16 @@ with admin_tab:
             "👥 Attendance"
         )
 
+
+        total_guests = len(df)
+
+
         attending_yes = int(
             (
                 df["Attending"] == "Yes"
             ).sum()
         )
+
 
         attending_no = int(
             (
@@ -1141,14 +1208,17 @@ with admin_tab:
             ).sum()
         )
 
+
         c1, c2, c3 = st.columns(3)
+
 
         with c1:
 
             st.metric(
-                "👥 Total Guests",
-                len(df)
+                "👥 Total",
+                total_guests
             )
+
 
         with c2:
 
@@ -1156,6 +1226,7 @@ with admin_tab:
                 "✅ Attending",
                 attending_yes
             )
+
 
         with c3:
 
@@ -1165,18 +1236,19 @@ with admin_tab:
             )
 
 
-        st.divider()
-
-
         # ====================================================
         # NAME SUGGESTIONS
         # ====================================================
+
+        st.divider()
 
         st.subheader(
             "👶 Name Suggestions"
         )
 
+
         name_col1, name_col2 = st.columns(2)
+
 
         with name_col1:
 
@@ -1184,15 +1256,21 @@ with admin_tab:
                 "### 👦 Baby Boy"
             )
 
-            boy_names = df[
-                "Baby Boy Name"
-            ].dropna()
 
-            boy_names = [
-                str(name).strip()
-                for name in boy_names
-                if str(name).strip()
-            ]
+            boy_names = []
+
+            if not df.empty:
+
+                for value in df[
+                    "Baby Boy Name"
+                ].dropna():
+
+                    value = str(value).strip()
+
+                    if value:
+
+                        boy_names.append(value)
+
 
             if boy_names:
 
@@ -1215,15 +1293,21 @@ with admin_tab:
                 "### 👧 Baby Girl"
             )
 
-            girl_names = df[
-                "Baby Girl Name"
-            ].dropna()
 
-            girl_names = [
-                str(name).strip()
-                for name in girl_names
-                if str(name).strip()
-            ]
+            girl_names = []
+
+            if not df.empty:
+
+                for value in df[
+                    "Baby Girl Name"
+                ].dropna():
+
+                    value = str(value).strip()
+
+                    if value:
+
+                        girl_names.append(value)
+
 
             if girl_names:
 
@@ -1240,12 +1324,11 @@ with admin_tab:
                 )
 
 
-        st.divider()
-
-
         # ====================================================
         # GUEST RESPONSES
         # ====================================================
+
+        st.divider()
 
         st.subheader(
             "👨‍👩‍👧 Guest Responses"
@@ -1255,17 +1338,230 @@ with admin_tab:
         if not df.empty:
 
             st.caption(
-                "☑️ Select one or more guests to delete."
+                "Select one or more guests to delete."
             )
 
 
             # ------------------------------------------------
-            # CREATE EDITABLE SELECTION TABLE
+            # CREATE UNIQUE LABELS
             # ------------------------------------------------
 
-            selection_df = df[
+            guest_options = {}
+
+            for _, row in df.iterrows():
+
+                guest_id = int(
+                    row["id"]
+                )
+
+                guest_name = str(
+                    row["Guest Name"]
+                )
+
+                gender = str(
+                    row["Gender Vote"]
+                )
+
+                attending = str(
+                    row["Attending"]
+                )
+
+                label = (
+                    f"{guest_name} "
+                    f"• {gender} "
+                    f"• {attending} "
+                    f"• ID {guest_id}"
+                )
+
+                guest_options[
+                    label
+                ] = guest_id
+
+
+            # ------------------------------------------------
+            # DYNAMIC MULTISELECT KEY
+            # ------------------------------------------------
+            #
+            # IMPORTANT:
+            # We DO NOT assign to the widget's session-state
+            # key after the widget has been created.
+            #
+            # Instead, after deletion we increase the version.
+            # This creates a brand-new multiselect widget and
+            # therefore clears its selections safely.
+
+            selector_key = (
+                "delete_guest_selector_"
+                + str(
+                    st.session_state.delete_selector_version
+                )
+            )
+
+
+            selected_guest_labels = st.multiselect(
+
+                "☑️ Select entries",
+
+                options=list(
+                    guest_options.keys()
+                ),
+
+                key=selector_key,
+
+                placeholder=(
+                    "Choose one or more guests..."
+                )
+            )
+
+
+            # ------------------------------------------------
+            # SELECTED IDS
+            # ------------------------------------------------
+
+            selected_ids = [
+                guest_options[label]
+                for label in selected_guest_labels
+            ]
+
+
+            # ------------------------------------------------
+            # DELETE BUTTON
+            # ------------------------------------------------
+
+            if selected_ids:
+
+                st.warning(
+                    f"⚠️ {len(selected_ids)} "
+                    f"entry/entries selected."
+                )
+
+
+                if not st.session_state[
+                    "confirm_delete_selected"
+                ]:
+
+                    if st.button(
+                        "🗑️ Delete Selected Entries",
+                        key="delete_selected_button",
+                        use_container_width=True
+                    ):
+
+                        # Store IDs separately so the
+                        # selection survives confirmation.
+                        st.session_state[
+                            "pending_delete_ids"
+                        ] = selected_ids
+
+                        st.session_state[
+                            "confirm_delete_selected"
+                        ] = True
+
+                        st.rerun()
+
+
+            # ------------------------------------------------
+            # DELETE CONFIRMATION
+            # ------------------------------------------------
+
+            if st.session_state[
+                "confirm_delete_selected"
+            ]:
+
+                pending_ids = st.session_state.get(
+                    "pending_delete_ids",
+                    []
+                )
+
+
+                st.error(
+                    f"⚠️ You are about to permanently "
+                    f"delete {len(pending_ids)} "
+                    f"entry/entries."
+                )
+
+
+                delete_col1, delete_col2 = (
+                    st.columns(2)
+                )
+
+
+                with delete_col1:
+
+                    if st.button(
+                        "❌ Cancel",
+                        key="cancel_delete_button",
+                        use_container_width=True
+                    ):
+
+                        st.session_state[
+                            "confirm_delete_selected"
+                        ] = False
+
+                        st.session_state[
+                            "pending_delete_ids"
+                        ] = []
+
+                        # Change selector key to clear
+                        # previous selections.
+
+                        st.session_state[
+                            "delete_selector_version"
+                        ] += 1
+
+                        st.rerun()
+
+
+                with delete_col2:
+
+                    if st.button(
+                        "🗑️ YES, DELETE",
+                        key="confirm_delete_button",
+                        use_container_width=True
+                    ):
+
+                        deleted_count = (
+                            delete_selected_rows(
+                                pending_ids
+                            )
+                        )
+
+
+                        st.cache_data.clear()
+
+
+                        st.session_state[
+                            "confirm_delete_selected"
+                        ] = False
+
+
+                        st.session_state[
+                            "pending_delete_ids"
+                        ] = []
+
+
+                        st.session_state[
+                            "delete_selector_version"
+                        ] += 1
+
+
+                        st.success(
+                            f"✅ {deleted_count} "
+                            f"entry/entries deleted."
+                        )
+
+
+                        st.rerun()
+
+
+            # ------------------------------------------------
+            # DISPLAY DATA
+            # ------------------------------------------------
+
+            st.divider()
+
+            display_df = df[
                 [
-                    "id",
+                    "Timestamp",
                     "Guest Name",
                     "Attending",
                     "Gender Vote",
@@ -1277,188 +1573,11 @@ with admin_tab:
             ].copy()
 
 
-            selection_df.insert(
-                0,
-                "Delete",
-                False
-            )
-
-
-            edited_df = st.data_editor(
-
-                selection_df,
-
+            st.dataframe(
+                display_df,
                 use_container_width=True,
-
-                hide_index=True,
-
-                disabled=[
-                    "id",
-                    "Guest Name",
-                    "Attending",
-                    "Gender Vote",
-                    "Date",
-                    "Baby Boy Name",
-                    "Baby Girl Name",
-                    "Message"
-                ],
-
-                column_config={
-
-                    "Delete":
-                        st.column_config.CheckboxColumn(
-                            "☑️ Delete",
-                            help=(
-                                "Select this guest "
-                                "for deletion."
-                            ),
-                            default=False
-                        ),
-
-                    "id":
-                        st.column_config.NumberColumn(
-                            "ID",
-                            width="small"
-                        ),
-
-                    "Guest Name":
-                        st.column_config.TextColumn(
-                            "Guest Name"
-                        ),
-
-                    "Attending":
-                        st.column_config.TextColumn(
-                            "Attending"
-                        ),
-
-                    "Gender Vote":
-                        st.column_config.TextColumn(
-                            "Gender Vote"
-                        ),
-
-                    "Date":
-                        st.column_config.TextColumn(
-                            "Date"
-                        ),
-
-                    "Baby Boy Name":
-                        st.column_config.TextColumn(
-                            "Baby Boy Name"
-                        ),
-
-                    "Baby Girl Name":
-                        st.column_config.TextColumn(
-                            "Baby Girl Name"
-                        ),
-
-                    "Message":
-                        st.column_config.TextColumn(
-                            "Message"
-                        )
-                },
-
-                key="guest_delete_editor"
+                hide_index=True
             )
-
-
-            selected_rows = edited_df[
-                edited_df["Delete"] == True
-            ]
-
-
-            selected_ids = selected_rows[
-                "id"
-            ].tolist()
-
-
-            # ------------------------------------------------
-            # DELETE SELECTED
-            # ------------------------------------------------
-
-            if selected_ids:
-
-                st.warning(
-                    f"⚠️ {len(selected_ids)} "
-                    f"entry/entries selected."
-                )
-
-                if st.button(
-                    "🗑️ Delete Selected Entries",
-                    key="delete_selected",
-                    use_container_width=True
-                ):
-
-                    st.session_state[
-                        "confirm_delete_selected"
-                    ] = True
-
-                    st.rerun()
-
-
-            # ------------------------------------------------
-            # CONFIRM DELETE
-            # ------------------------------------------------
-
-            if st.session_state[
-                "confirm_delete_selected"
-            ]:
-
-                st.error(
-                    f"⚠️ You are about to permanently "
-                    f"delete {len(selected_ids)} "
-                    f"selected entry/entries."
-                )
-
-                delete_col1, delete_col2 = st.columns(2)
-
-
-                with delete_col1:
-
-                    if st.button(
-                        "❌ Cancel",
-                        key="cancel_delete_selected",
-                        use_container_width=True
-                    ):
-
-                        st.session_state[
-                            "confirm_delete_selected"
-                        ] = False
-
-                        st.rerun()
-
-
-                with delete_col2:
-
-                    if st.button(
-                        "🗑️ YES, DELETE",
-                        key="confirm_delete_selected",
-                        use_container_width=True
-                    ):
-
-                        if selected_ids:
-
-                            deleted_count = (
-                                delete_selected_rows(
-                                    selected_ids
-                                )
-                            )
-
-                            st.cache_data.clear()
-
-                            st.session_state[
-                                "confirm_delete_selected"
-                            ] = False
-
-                            st.session_state[
-                                "submission_confirmation"
-                            ] = None
-
-                            st.success(
-                                f"✅ {deleted_count} "
-                                f"entry/entries deleted."
-                            )
-
-                            st.rerun()
 
 
         else:
@@ -1478,11 +1597,13 @@ with admin_tab:
             "📥 Download Guest Data"
         )
 
+
         if not df.empty:
 
             excel_file = create_excel_file(
                 df
             )
+
 
             st.download_button(
                 label="📊 Download Excel",
@@ -1514,6 +1635,7 @@ with admin_tab:
             "⚠️ Danger Zone"
         )
 
+
         st.warning(
             "Reset Entire App permanently deletes "
             "ALL guest predictions, attendance, "
@@ -1521,13 +1643,17 @@ with admin_tab:
         )
 
 
+        # ----------------------------------------------------
+        # RESET BUTTON
+        # ----------------------------------------------------
+
         if not st.session_state[
             "confirm_reset_app"
         ]:
 
             if st.button(
                 "🧹 Reset Entire App",
-                key="reset_entire_app",
+                key="reset_entire_app_button",
                 use_container_width=True
             ):
 
@@ -1537,6 +1663,10 @@ with admin_tab:
 
                 st.rerun()
 
+
+        # ----------------------------------------------------
+        # RESET CONFIRMATION
+        # ----------------------------------------------------
 
         else:
 
@@ -1549,14 +1679,16 @@ with admin_tab:
             )
 
 
-            reset_col1, reset_col2 = st.columns(2)
+            reset_col1, reset_col2 = (
+                st.columns(2)
+            )
 
 
             with reset_col1:
 
                 if st.button(
                     "❌ Cancel",
-                    key="cancel_reset_app",
+                    key="cancel_reset_button",
                     use_container_width=True
                 ):
 
@@ -1571,33 +1703,48 @@ with admin_tab:
 
                 if st.button(
                     "🧹 YES, RESET EVERYTHING",
-                    key="confirm_reset_app",
+                    key="confirm_reset_button",
                     use_container_width=True
                 ):
 
                     reset_entire_database()
 
+
                     st.cache_data.clear()
 
+
+                    # Clear previous submission
                     st.session_state[
                         "submission_confirmation"
                     ] = None
 
+
+                    # Force new empty form
                     st.session_state[
                         "form_reset"
                     ] += 1
+
+
+                    # Clear delete state
+                    st.session_state[
+                        "confirm_delete_selected"
+                    ] = False
+
 
                     st.session_state[
                         "confirm_reset_app"
                     ] = False
 
-                    st.session_state[
-                        "confirm_delete_selected"
-                    ] = False
 
-                    st.success(
-                        "✅ App has been completely reset."
-                    )
+                    st.session_state[
+                        "pending_delete_ids"
+                    ] = []
+
+
+                    st.session_state[
+                        "delete_selector_version"
+                    ] += 1
+
 
                     st.rerun()
 
@@ -1608,9 +1755,10 @@ with admin_tab:
 
         st.divider()
 
+
         if st.button(
             "🔄 Refresh Dashboard",
-            key="refresh_admin",
+            key="admin_refresh_button",
             use_container_width=True
         ):
 
@@ -1625,7 +1773,7 @@ with admin_tab:
 
         if st.button(
             "🔒 Lock Private Dashboard",
-            key="admin_logout",
+            key="admin_logout_button",
             use_container_width=True
         ):
 
