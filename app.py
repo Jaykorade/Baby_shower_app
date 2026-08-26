@@ -1,31 +1,22 @@
 import streamlit as st
-import requests
+import sqlite3
 import pandas as pd
 from datetime import date
 from collections import Counter
 import plotly.graph_objects as go
+from pathlib import Path
 
 
 # ============================================================
 # CONFIGURATION
 # ============================================================
 
-APPS_SCRIPT_URL = (
-    "https://script.google.com/macros/s/"
-    "AKfycbwVnky82VMOehoM5AohJUzTqd7nS1T2_m--yq1yXfywczEV9XMsy1dLbbXAC191Ut7N"
-    "/exec"
-)
+DB_PATH = Path("baby_shower.db")
 
 
 # ============================================================
 # ADMIN PASSWORD
 # ============================================================
-# Streamlit Cloud:
-# Settings -> Secrets
-#
-# ADMIN_PASSWORD = "YOUR_PASSWORD"
-#
-# Never put the real password directly in this file.
 
 try:
     ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
@@ -46,7 +37,7 @@ st.set_page_config(
 
 
 # ============================================================
-# MOBILE-FRIENDLY CSS
+# MOBILE FRIENDLY CSS
 # ============================================================
 
 st.markdown(
@@ -116,77 +107,168 @@ st.markdown(
 
 
 # ============================================================
-# GOOGLE APPS SCRIPT - GET
+# DATABASE CONNECTION
 # ============================================================
-# Cached for 10 seconds.
-#
-# This is the main performance improvement.
-# It prevents every Streamlit rerun from calling Google Sheets.
+
+def get_connection():
+
+    connection = sqlite3.connect(
+        DB_PATH,
+        check_same_thread=False
+    )
+
+    connection.row_factory = sqlite3.Row
+
+    return connection
+
+
+# ============================================================
+# CREATE DATABASE
+# ============================================================
+
+def initialize_database():
+
+    connection = get_connection()
+
+    cursor = connection.cursor()
+
+    cursor.execute(
+        """
+        CREATE TABLE IF NOT EXISTS predictions (
+
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+
+            timestamp DATETIME DEFAULT CURRENT_TIMESTAMP,
+
+            guest_name TEXT NOT NULL UNIQUE,
+
+            attending_yes_no TEXT NOT NULL,
+
+            gender_vote TEXT NOT NULL,
+
+            guessed_date TEXT NOT NULL,
+
+            baby_boy_name TEXT,
+
+            baby_girl_name TEXT,
+
+            message TEXT
+
+        )
+        """
+    )
+
+    connection.commit()
+
+    connection.close()
+
+
+initialize_database()
+
+
+# ============================================================
+# GET ALL PREDICTIONS
+# ============================================================
 
 @st.cache_data(
-    ttl=10,
+    ttl=5,
     show_spinner=False
 )
 def get_predictions():
 
+    connection = get_connection()
+
+    dataframe = pd.read_sql_query(
+        """
+        SELECT
+            id,
+            timestamp AS Timestamp,
+            guest_name AS "Guest Name",
+            attending_yes_no AS Attending,
+            gender_vote AS "Gender Vote",
+            guessed_date AS Date,
+            baby_boy_name AS "Baby Boy Name",
+            baby_girl_name AS "Baby Girl Name",
+            message AS Message
+        FROM predictions
+        ORDER BY id ASC
+        """,
+        connection
+    )
+
+    connection.close()
+
+    return dataframe
+
+
+# ============================================================
+# INSERT PREDICTION
+# ============================================================
+
+def submit_prediction(
+    guest_name,
+    attending,
+    gender,
+    guessed_date,
+    boy_name,
+    girl_name,
+    message
+):
+
+    connection = get_connection()
+
+    cursor = connection.cursor()
+
     try:
 
-        response = requests.get(
-            APPS_SCRIPT_URL,
-            timeout=10
+        cursor.execute(
+            """
+            INSERT INTO predictions (
+                guest_name,
+                attending_yes_no,
+                gender_vote,
+                guessed_date,
+                baby_boy_name,
+                baby_girl_name,
+                message
+            )
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                guest_name,
+                attending,
+                gender,
+                guessed_date,
+                boy_name,
+                girl_name,
+                message
+            )
         )
 
-        response.raise_for_status()
+        connection.commit()
 
-        return response.json()
+        connection.close()
 
-    except requests.exceptions.RequestException as error:
+        return {
+            "success": True
+        }
+
+    except sqlite3.IntegrityError:
+
+        connection.close()
+
+        return {
+            "success": False,
+            "duplicate": True
+        }
+
+    except Exception as error:
+
+        connection.close()
 
         return {
             "success": False,
             "error": str(error)
-        }
-
-    except ValueError:
-
-        return {
-            "success": False,
-            "error": "Invalid response from Google Apps Script."
-        }
-
-
-# ============================================================
-# GOOGLE APPS SCRIPT - POST
-# ============================================================
-# POST is NOT cached because every submission must reach
-# Google Apps Script immediately.
-
-def submit_prediction(data):
-
-    try:
-
-        response = requests.post(
-            APPS_SCRIPT_URL,
-            json=data,
-            timeout=15
-        )
-
-        response.raise_for_status()
-
-        return response.json()
-
-    except requests.exceptions.RequestException as error:
-
-        return {
-            "success": False,
-            "error": str(error)
-        }
-
-    except ValueError:
-
-        return {
-            "success": False,
-            "error": "Invalid response from Google Apps Script."
         }
 
 
@@ -194,18 +276,11 @@ def submit_prediction(data):
 # LOAD DATA
 # ============================================================
 
-result = get_predictions()
+df = get_predictions()
 
-if result.get("success"):
-
-    records = result.get(
-        "data",
-        []
-    )
-
-else:
-
-    records = []
+records = df.to_dict(
+    orient="records"
+)
 
 
 # ============================================================
@@ -237,12 +312,14 @@ form_tab, gender_tab, admin_tab = st.tabs(
 
 
 # ============================================================
-# TAB 1 - PREDICTION FORM
+# TAB 1 — PREDICTION FORM
 # ============================================================
 
 with form_tab:
 
-    st.title("🎊 Make Your Prediction")
+    st.title(
+        "🎊 Make Your Prediction"
+    )
 
     st.write(
         "Fill in your prediction below."
@@ -316,10 +393,6 @@ with form_tab:
         clean_message = message.strip()
 
 
-        # ----------------------------------------------------
-        # VALIDATION
-        # ----------------------------------------------------
-
         if not clean_guest_name:
 
             st.error(
@@ -343,56 +416,27 @@ with form_tab:
                 gender_value = "Girl"
 
 
-            prediction = {
+            result = submit_prediction(
 
-                "guest_name":
-                    clean_guest_name,
+                guest_name=clean_guest_name,
 
-                "attending_yes_no":
-                    attending,
+                attending=attending,
 
-                "gender_vote":
-                    gender_value,
+                gender=gender_value,
 
-                "guessed_date":
-                    guessed_date.strftime(
-                        "%Y-%m-%d"
-                    ),
+                guessed_date=guessed_date.strftime(
+                    "%Y-%m-%d"
+                ),
 
-                "baby_boy_name":
-                    clean_boy_name,
+                boy_name=clean_boy_name,
 
-                "baby_girl_name":
-                    clean_girl_name,
+                girl_name=clean_girl_name,
 
-                "message":
-                    clean_message
-            }
+                message=clean_message
+            )
 
 
-            # ------------------------------------------------
-            # SAVE
-            # ------------------------------------------------
-
-            with st.spinner(
-                "Saving your prediction..."
-            ):
-
-                save_result = submit_prediction(
-                    prediction
-                )
-
-
-            # ------------------------------------------------
-            # SUCCESS
-            # ------------------------------------------------
-
-            if save_result.get(
-                "success"
-            ):
-
-                # Clear cached Google Sheet data
-                # so the new vote appears immediately.
+            if result.get("success"):
 
                 st.cache_data.clear()
 
@@ -409,13 +453,7 @@ with form_tab:
                 st.rerun()
 
 
-            # ------------------------------------------------
-            # DUPLICATE
-            # ------------------------------------------------
-
-            elif save_result.get(
-                "duplicate"
-            ):
+            elif result.get("duplicate"):
 
                 st.error(
                     "⚠️ This guest name has already submitted."
@@ -426,10 +464,6 @@ with form_tab:
                 )
 
 
-            # ------------------------------------------------
-            # ERROR
-            # ------------------------------------------------
-
             else:
 
                 st.error(
@@ -438,7 +472,7 @@ with form_tab:
 
                 st.code(
                     str(
-                        save_result.get(
+                        result.get(
                             "error",
                             "Unknown error"
                         )
@@ -447,7 +481,7 @@ with form_tab:
 
 
 # ============================================================
-# TAB 2 - GENDER PREDICTION
+# TAB 2 — GENDER PREDICTION
 # ============================================================
 
 with gender_tab:
@@ -462,40 +496,32 @@ with gender_tab:
 
 
     # ========================================================
-    # VOTES
+    # CALCULATE VOTES
     # ========================================================
 
-    total_votes = len(
-        records
-    )
+    total_votes = len(df)
 
 
-    gender_counter = Counter(
-        str(
-            row.get(
-                "Gender Vote",
-                ""
-            )
-        ).strip()
-        for row in records
-    )
+    if total_votes > 0:
 
+        boy_votes = int(
+            (
+                df["Gender Vote"] == "Boy"
+            ).sum()
+        )
 
-    boy_votes = gender_counter.get(
-        "Boy",
-        0
-    )
+        girl_votes = int(
+            (
+                df["Gender Vote"] == "Girl"
+            ).sum()
+        )
 
+    else:
 
-    girl_votes = gender_counter.get(
-        "Girl",
-        0
-    )
+        boy_votes = 0
 
+        girl_votes = 0
 
-    # ========================================================
-    # PERCENTAGES
-    # ========================================================
 
     if total_votes > 0:
 
@@ -520,9 +546,7 @@ with gender_tab:
     # SUMMARY
     # ========================================================
 
-    col1, col2 = st.columns(
-        2
-    )
+    col1, col2 = st.columns(2)
 
 
     with col1:
@@ -663,11 +687,7 @@ with gender_tab:
 
                 xanchor="center",
 
-                x=0.5,
-
-                font=dict(
-                    size=13
-                )
+                x=0.5
             ),
 
             margin=dict(
@@ -723,7 +743,7 @@ with gender_tab:
 
 
 # ============================================================
-# TAB 3 - PRIVATE DASHBOARD
+# TAB 3 — PRIVATE DASHBOARD
 # ============================================================
 
 with admin_tab:
@@ -740,11 +760,6 @@ with admin_tab:
         st.title(
             "🔐 Private Dashboard"
         )
-
-        st.caption(
-            "Admin access only."
-        )
-
 
         password = st.text_input(
             "Admin Password",
@@ -801,40 +816,29 @@ with admin_tab:
         )
 
 
-        attendance_counter = Counter(
-            str(
-                row.get(
-                    "Attending_yes_no",
-                    ""
-                )
-            ).strip()
-            for row in records
+        attending_yes = int(
+            (
+                df["Attending"] == "Yes"
+            ).sum()
         )
 
 
-        attending_yes = attendance_counter.get(
-            "Yes",
-            0
-        )
-
-
-        attending_no = attendance_counter.get(
-            "No",
-            0
+        attending_no = int(
+            (
+                df["Attending"] == "No"
+            ).sum()
         )
 
 
         st.metric(
             "👥 Total Guests",
-            len(records)
+            len(df)
         )
-
 
         st.metric(
             "✅ Attending",
             attending_yes
         )
-
 
         st.metric(
             "❌ Not Attending",
@@ -854,24 +858,16 @@ with admin_tab:
         )
 
 
-        boy_names = []
+        boy_names = df[
+            "Baby Boy Name"
+        ].dropna()
 
 
-        for row in records:
-
-            boy_name = str(
-                row.get(
-                    "Baby Boy Name",
-                    ""
-                )
-            ).strip()
-
-
-            if boy_name:
-
-                boy_names.append(
-                    boy_name
-                )
+        boy_names = [
+            str(name).strip()
+            for name in boy_names
+            if str(name).strip()
+        ]
 
 
         if boy_names:
@@ -898,24 +894,16 @@ with admin_tab:
         )
 
 
-        girl_names = []
+        girl_names = df[
+            "Baby Girl Name"
+        ].dropna()
 
 
-        for row in records:
-
-            girl_name = str(
-                row.get(
-                    "Baby Girl Name",
-                    ""
-                )
-            ).strip()
-
-
-            if girl_name:
-
-                girl_names.append(
-                    girl_name
-                )
+        girl_names = [
+            str(name).strip()
+            for name in girl_names
+            if str(name).strip()
+        ]
 
 
         if girl_names:
@@ -945,77 +933,27 @@ with admin_tab:
         )
 
 
-        admin_data = []
+        if not df.empty:
 
-
-        for row in records:
-
-            admin_data.append(
-                {
-                    "Timestamp":
-                        row.get(
-                            "Timestamp",
-                            ""
-                        ),
-
-                    "Guest Name":
-                        row.get(
-                            "Guest Name",
-                            ""
-                        ),
-
-                    "Attending":
-                        row.get(
-                            "Attending_yes_no",
-                            ""
-                        ),
-
-                    "Gender":
-                        row.get(
-                            "Gender Vote",
-                            ""
-                        ),
-
-                    "Date":
-                        row.get(
-                            "Date",
-                            ""
-                        ),
-
-                    "Baby Boy Name":
-                        row.get(
-                            "Baby Boy Name",
-                            ""
-                        ),
-
-                    "Baby Girl Name":
-                        row.get(
-                            "Baby Girl Name",
-                            ""
-                        ),
-
-                    "Message":
-                        row.get(
-                            "Message",
-                            ""
-                        )
-                }
-            )
-
-
-        if admin_data:
-
-            admin_df = pd.DataFrame(
-                admin_data
-            )
+            display_df = df[
+                [
+                    "Timestamp",
+                    "Guest Name",
+                    "Attending",
+                    "Gender Vote",
+                    "Date",
+                    "Baby Boy Name",
+                    "Baby Girl Name",
+                    "Message"
+                ]
+            ]
 
 
             st.dataframe(
-                admin_df,
+                display_df,
                 use_container_width=True,
                 hide_index=True
             )
-
 
         else:
 
@@ -1028,7 +966,7 @@ with admin_tab:
 
 
         # ====================================================
-        # REFRESH ADMIN
+        # REFRESH
         # ====================================================
 
         if st.button(
