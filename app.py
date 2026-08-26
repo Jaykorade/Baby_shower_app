@@ -6,7 +6,6 @@ from pathlib import Path
 from io import BytesIO
 import plotly.graph_objects as go
 
-
 # ============================================================
 # CONFIGURATION
 # ============================================================
@@ -340,10 +339,10 @@ def create_excel_file(dataframe):
     with pd.ExcelWriter(
         output,
         engine="openpyxl"
-    ):
+    ) as writer:
 
         export_df.to_excel(
-            output,
+            writer,
             index=False,
             sheet_name="Baby Shower"
         )
