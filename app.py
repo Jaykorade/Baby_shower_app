@@ -20,16 +20,12 @@ APPS_SCRIPT_URL = (
 # ============================================================
 # ADMIN PASSWORD
 # ============================================================
-# IMPORTANT:
-# Add this in Streamlit Cloud:
-#
+# Streamlit Cloud:
 # Settings -> Secrets
 #
-# Use:
+# ADMIN_PASSWORD = "YOUR_PASSWORD"
 #
-# ADMIN_PASSWORD = "your-password"
-#
-# Do NOT put your real password in this Python file.
+# Never put the real password directly in this file.
 
 try:
     ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
@@ -50,22 +46,19 @@ st.set_page_config(
 
 
 # ============================================================
-# SIMPLE MOBILE-FRIENDLY CSS
+# MOBILE-FRIENDLY CSS
 # ============================================================
-# This CSS is ONLY for general page styling.
-# NO HTML is used inside the Gender Prediction dashboard.
 
 st.markdown(
     """
     <style>
 
     .stApp {
-        background:
-            linear-gradient(
-                135deg,
-                #fff8fb 0%,
-                #f7fbff 100%
-            );
+        background: linear-gradient(
+            135deg,
+            #fff8fb 0%,
+            #f7fbff 100%
+        );
     }
 
     .block-container {
@@ -86,14 +79,14 @@ st.markdown(
 
     .subtitle {
         text-align: center;
-        color: #666666;
+        color: #666;
         font-size: 1rem;
         margin-bottom: 20px;
     }
 
     .footer {
         text-align: center;
-        color: #999999;
+        color: #999;
         margin-top: 40px;
         padding-bottom: 15px;
     }
@@ -101,8 +94,8 @@ st.markdown(
     @media (max-width: 600px) {
 
         .block-container {
-            padding-left: 0.75rem;
-            padding-right: 0.75rem;
+            padding-left: 0.7rem;
+            padding-right: 0.7rem;
             padding-top: 0.5rem;
         }
 
@@ -123,17 +116,24 @@ st.markdown(
 
 
 # ============================================================
-# GOOGLE APPS SCRIPT - SUBMIT
+# GOOGLE APPS SCRIPT - GET
 # ============================================================
+# Cached for 10 seconds.
+#
+# This is the main performance improvement.
+# It prevents every Streamlit rerun from calling Google Sheets.
 
-def submit_prediction(data):
+@st.cache_data(
+    ttl=10,
+    show_spinner=False
+)
+def get_predictions():
 
     try:
 
-        response = requests.post(
+        response = requests.get(
             APPS_SCRIPT_URL,
-            json=data,
-            timeout=30
+            timeout=10
         )
 
         response.raise_for_status()
@@ -156,16 +156,19 @@ def submit_prediction(data):
 
 
 # ============================================================
-# GOOGLE APPS SCRIPT - GET DATA
+# GOOGLE APPS SCRIPT - POST
 # ============================================================
+# POST is NOT cached because every submission must reach
+# Google Apps Script immediately.
 
-def get_predictions():
+def submit_prediction(data):
 
     try:
 
-        response = requests.get(
+        response = requests.post(
             APPS_SCRIPT_URL,
-            timeout=30
+            json=data,
+            timeout=15
         )
 
         response.raise_for_status()
@@ -249,18 +252,10 @@ with form_tab:
         "baby_prediction_form"
     ):
 
-        # ----------------------------------------------------
-        # GUEST NAME
-        # ----------------------------------------------------
-
         guest_name = st.text_input(
             "Guest Name *",
             placeholder="Enter your full name"
         )
-
-        # ----------------------------------------------------
-        # ATTENDANCE
-        # ----------------------------------------------------
 
         attending = st.radio(
             "Are you attending the Baby Shower? *",
@@ -271,10 +266,6 @@ with form_tab:
             horizontal=True
         )
 
-        # ----------------------------------------------------
-        # GENDER
-        # ----------------------------------------------------
-
         gender_vote = st.radio(
             "What do you predict? *",
             [
@@ -284,45 +275,25 @@ with form_tab:
             horizontal=True
         )
 
-        # ----------------------------------------------------
-        # DATE
-        # ----------------------------------------------------
-
         guessed_date = st.date_input(
             "When do you think baby will arrive? *",
             min_value=date.today()
         )
-
-        # ----------------------------------------------------
-        # BOY NAME
-        # ----------------------------------------------------
 
         baby_boy_name = st.text_input(
             "👦 Baby Boy Name Suggestion",
             placeholder="Suggest a boy name"
         )
 
-        # ----------------------------------------------------
-        # GIRL NAME
-        # ----------------------------------------------------
-
         baby_girl_name = st.text_input(
             "👧 Baby Girl Name Suggestion",
             placeholder="Suggest a girl name"
         )
 
-        # ----------------------------------------------------
-        # MESSAGE
-        # ----------------------------------------------------
-
         message = st.text_area(
             "💌 Message for the Parents",
             placeholder="Write your wishes for the parents and baby..."
         )
-
-        # ----------------------------------------------------
-        # SUBMIT
-        # ----------------------------------------------------
 
         submitted = st.form_submit_button(
             "🎊 Submit My Prediction",
@@ -363,10 +334,6 @@ with form_tab:
 
         else:
 
-            # ------------------------------------------------
-            # GENDER VALUE
-            # ------------------------------------------------
-
             if gender_vote.startswith("Boy"):
 
                 gender_value = "Boy"
@@ -375,10 +342,6 @@ with form_tab:
 
                 gender_value = "Girl"
 
-
-            # ------------------------------------------------
-            # DATA
-            # ------------------------------------------------
 
             prediction = {
 
@@ -408,7 +371,7 @@ with form_tab:
 
 
             # ------------------------------------------------
-            # SEND TO GOOGLE SHEET
+            # SAVE
             # ------------------------------------------------
 
             with st.spinner(
@@ -427,6 +390,11 @@ with form_tab:
             if save_result.get(
                 "success"
             ):
+
+                # Clear cached Google Sheet data
+                # so the new vote appears immediately.
+
+                st.cache_data.clear()
 
                 st.balloons()
 
@@ -494,7 +462,7 @@ with gender_tab:
 
 
     # ========================================================
-    # CALCULATE VOTES
+    # VOTES
     # ========================================================
 
     total_votes = len(
@@ -526,7 +494,7 @@ with gender_tab:
 
 
     # ========================================================
-    # CALCULATE PERCENTAGES
+    # PERCENTAGES
     # ========================================================
 
     if total_votes > 0:
@@ -549,7 +517,7 @@ with gender_tab:
 
 
     # ========================================================
-    # BOY / GIRL METRICS
+    # SUMMARY
     # ========================================================
 
     col1, col2 = st.columns(
@@ -575,10 +543,6 @@ with gender_tab:
         )
 
 
-    # ========================================================
-    # TOTAL
-    # ========================================================
-
     st.metric(
         label="🍼 Total Predictions",
         value=total_votes
@@ -589,7 +553,7 @@ with gender_tab:
 
 
     # ========================================================
-    # PERCENTAGE BARS
+    # PROGRESS BARS
     # ========================================================
 
     st.subheader(
@@ -600,7 +564,6 @@ with gender_tab:
     st.write(
         f"💙 Baby Boy — {boy_percentage:.1f}%"
     )
-
 
     st.progress(
         int(
@@ -615,7 +578,6 @@ with gender_tab:
         f"💗 Baby Girl — {girl_percentage:.1f}%"
     )
 
-
     st.progress(
         int(
             round(
@@ -629,7 +591,7 @@ with gender_tab:
 
 
     # ========================================================
-    # PLOTLY DONUT
+    # DONUT CHART
     # ========================================================
 
     if total_votes > 0:
@@ -726,8 +688,11 @@ with gender_tab:
 
 
         st.plotly_chart(
+
             fig,
+
             use_container_width=True,
+
             config={
                 "displayModeBar": False,
                 "responsive": True
@@ -748,8 +713,11 @@ with gender_tab:
 
     if st.button(
         "🔄 Refresh Predictions",
-        key="refresh_gender"
+        key="refresh_gender",
+        use_container_width=True
     ):
+
+        st.cache_data.clear()
 
         st.rerun()
 
@@ -878,7 +846,7 @@ with admin_tab:
 
 
         # ====================================================
-        # BABY BOY NAMES
+        # BOY NAMES
         # ====================================================
 
         st.subheader(
@@ -922,7 +890,7 @@ with admin_tab:
 
 
         # ====================================================
-        # BABY GIRL NAMES
+        # GIRL NAMES
         # ====================================================
 
         st.subheader(
@@ -969,7 +937,7 @@ with admin_tab:
 
 
         # ====================================================
-        # ALL GUEST RESPONSES
+        # ALL RESPONSES
         # ====================================================
 
         st.subheader(
@@ -1048,6 +1016,7 @@ with admin_tab:
                 hide_index=True
             )
 
+
         else:
 
             st.info(
@@ -1055,12 +1024,27 @@ with admin_tab:
             )
 
 
+        st.divider()
+
+
+        # ====================================================
+        # REFRESH ADMIN
+        # ====================================================
+
+        if st.button(
+            "🔄 Refresh Dashboard",
+            key="refresh_admin",
+            use_container_width=True
+        ):
+
+            st.cache_data.clear()
+
+            st.rerun()
+
+
         # ====================================================
         # LOGOUT
         # ====================================================
-
-        st.divider()
-
 
         if st.button(
             "🔒 Lock Private Dashboard",
@@ -1080,6 +1064,12 @@ with admin_tab:
 # ============================================================
 
 st.markdown(
-    '<div class="footer">Made with ❤️ for the Baby Shower<br>👶 💙 🎀 💗 🍼</div>',
+    """
+    <div class="footer">
+        Made with ❤️ for the Baby Shower
+        <br>
+        👶 💙 🎀 💗 🍼
+    </div>
+    """,
     unsafe_allow_html=True
 )
