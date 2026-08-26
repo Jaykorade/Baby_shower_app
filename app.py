@@ -37,11 +37,17 @@ st.set_page_config(
 
 
 # ============================================================
-# FORM RESET STATE
+# SESSION STATE
 # ============================================================
 
 if "form_reset" not in st.session_state:
     st.session_state.form_reset = 0
+
+if "submission_confirmation" not in st.session_state:
+    st.session_state.submission_confirmation = None
+
+if "admin_authenticated" not in st.session_state:
+    st.session_state.admin_authenticated = False
 
 
 # ============================================================
@@ -310,17 +316,11 @@ def submit_prediction(
             INSERT INTO predictions (
 
                 guest_name,
-
                 attending_yes_no,
-
                 gender_vote,
-
                 guessed_date,
-
                 baby_boy_name,
-
                 baby_girl_name,
-
                 message
 
             )
@@ -454,8 +454,19 @@ with form_tab:
     )
 
 
+    # IMPORTANT:
+    # A new form key is generated after every successful
+    # submission. This forces Streamlit to create a new form
+    # with completely empty widgets.
+
+    current_form_key = (
+        f"baby_prediction_form_"
+        f"{st.session_state.form_reset}"
+    )
+
+
     with st.form(
-        f"baby_prediction_form_{st.session_state.form_reset}"
+        current_form_key
     ):
 
         guest_name = st.text_input(
@@ -522,6 +533,10 @@ with form_tab:
         clean_message = message.strip()
 
 
+        # ----------------------------------------------------
+        # VALIDATION
+        # ----------------------------------------------------
+
         if not clean_guest_name:
 
             st.error(
@@ -543,6 +558,10 @@ with form_tab:
             )
 
 
+            # ------------------------------------------------
+            # SAVE TO DATABASE
+            # ------------------------------------------------
+
             result = submit_prediction(
 
                 guest_name=clean_guest_name,
@@ -563,9 +582,14 @@ with form_tab:
             )
 
 
+            # =================================================
+            # SUCCESS
+            # =================================================
+
             if result.get("success"):
 
-                st.cache_data.clear()
+                # Save confirmation BEFORE rerun.
+                # Session state survives the rerun.
 
                 st.session_state[
                     "submission_confirmation"
@@ -595,14 +619,33 @@ with form_tab:
                         clean_message
                 }
 
+
+                # Clear cached database results.
+
+                st.cache_data.clear()
+
+
+                # Change form key.
+                #
+                # On the next Streamlit run this creates
+                # an entirely NEW form with empty fields.
+
                 st.session_state.form_reset += 1
 
-                st.balloons()
 
-                st.success(
-                    "🎉 Your prediction has been submitted successfully!"
-                )
+                # IMPORTANT:
+                #
+                # Rerun immediately.
+                #
+                # Do not put st.success(), st.balloons()
+                # or another widget before this rerun.
 
+                st.rerun()
+
+
+            # =================================================
+            # DUPLICATE
+            # =================================================
 
             elif result.get("duplicate"):
 
@@ -614,6 +657,10 @@ with form_tab:
                     "Each guest can submit only once."
                 )
 
+
+            # =================================================
+            # DATABASE ERROR
+            # =================================================
 
             else:
 
@@ -653,9 +700,13 @@ with form_tab:
         )
 
         st.caption(
-            "Please review your submitted prediction below."
+            "Your prediction has been submitted successfully."
         )
 
+
+        # ----------------------------------------------------
+        # GUEST NAME
+        # ----------------------------------------------------
 
         st.info(
             f"👤 **Guest Name:** "
@@ -663,11 +714,19 @@ with form_tab:
         )
 
 
+        # ----------------------------------------------------
+        # ATTENDANCE
+        # ----------------------------------------------------
+
         st.write(
             f"✅ **Attending:** "
             f"{submission['attending']}"
         )
 
+
+        # ----------------------------------------------------
+        # GENDER
+        # ----------------------------------------------------
 
         if submission["gender"] == "Boy":
 
@@ -684,11 +743,19 @@ with form_tab:
             )
 
 
+        # ----------------------------------------------------
+        # DATE
+        # ----------------------------------------------------
+
         st.write(
             f"📅 **Predicted Arrival Date:** "
             f"{submission['guessed_date']}"
         )
 
+
+        # ----------------------------------------------------
+        # BOY NAME
+        # ----------------------------------------------------
 
         if submission["boy_name"]:
 
@@ -698,6 +765,10 @@ with form_tab:
             )
 
 
+        # ----------------------------------------------------
+        # GIRL NAME
+        # ----------------------------------------------------
+
         if submission["girl_name"]:
 
             st.write(
@@ -705,6 +776,10 @@ with form_tab:
                 f"{submission['girl_name']}"
             )
 
+
+        # ----------------------------------------------------
+        # MESSAGE
+        # ----------------------------------------------------
 
         if submission["message"]:
 
@@ -831,7 +906,7 @@ with gender_tab:
 
 
     # --------------------------------------------------------
-    # BABY BOY BAR
+    # BABY BOY
     # --------------------------------------------------------
 
     st.markdown(
@@ -853,7 +928,7 @@ with gender_tab:
 
 
     # --------------------------------------------------------
-    # BABY GIRL BAR
+    # BABY GIRL
     # --------------------------------------------------------
 
     st.markdown(
