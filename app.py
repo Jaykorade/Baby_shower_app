@@ -5,20 +5,31 @@ from datetime import date
 from collections import Counter
 import plotly.graph_objects as go
 
+
 # ============================================================
 # CONFIGURATION
 # ============================================================
 
-APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwVnky82VMOehoM5AohJUzTqd7nS1T2_m--yq1yXfywczEV9XMsy1dLbbXAC191Ut7N/exec"
+APPS_SCRIPT_URL = (
+    "https://script.google.com/macros/s/"
+    "AKfycbwVnky82VMOehoM5AohJUzTqd7nS1T2_m--yq1yXfywczEV9XMsy1dLbbXAC191Ut7N"
+    "/exec"
+)
+
 
 # ============================================================
 # ADMIN PASSWORD
 # ============================================================
-# Put this in Streamlit Cloud > Settings > Secrets:
+# IMPORTANT:
+# Add this in Streamlit Cloud:
+#
+# Settings -> Secrets
+#
+# Use:
 #
 # ADMIN_PASSWORD = "your-password"
 #
-# Do NOT put your real password directly in GitHub.
+# Do NOT put your real password in this Python file.
 
 try:
     ADMIN_PASSWORD = st.secrets["ADMIN_PASSWORD"]
@@ -27,7 +38,7 @@ except Exception:
 
 
 # ============================================================
-# PAGE CONFIG - MOBILE FRIENDLY
+# PAGE CONFIG
 # ============================================================
 
 st.set_page_config(
@@ -39,26 +50,17 @@ st.set_page_config(
 
 
 # ============================================================
-# MOBILE FRIENDLY CSS
+# SIMPLE MOBILE-FRIENDLY CSS
 # ============================================================
+# This CSS is ONLY for general page styling.
+# NO HTML is used inside the Gender Prediction dashboard.
 
 st.markdown(
     """
     <style>
 
-    /* Main application */
     .stApp {
         background:
-            radial-gradient(
-                circle at 5% 5%,
-                rgba(77, 166, 255, 0.10),
-                transparent 25%
-            ),
-            radial-gradient(
-                circle at 95% 5%,
-                rgba(255, 105, 180, 0.10),
-                transparent 25%
-            ),
             linear-gradient(
                 135deg,
                 #fff8fb 0%,
@@ -66,7 +68,6 @@ st.markdown(
             );
     }
 
-    /* Keep content comfortable on mobile */
     .block-container {
         max-width: 900px;
         padding-top: 1rem;
@@ -75,123 +76,28 @@ st.markdown(
         padding-bottom: 2rem;
     }
 
-    /* Main title */
     .main-title {
         text-align: center;
-        font-size: 2.6rem;
-        line-height: 1.15;
+        font-size: 2.5rem;
         font-weight: 800;
         color: #5b4b8a;
-        margin-bottom: 8px;
+        margin-bottom: 5px;
     }
 
     .subtitle {
         text-align: center;
+        color: #666666;
         font-size: 1rem;
-        line-height: 1.5;
-        color: #666;
         margin-bottom: 20px;
-    }
-
-    .section-title {
-        text-align: center;
-        color: #5b4b8a;
-        font-weight: 700;
-        font-size: 1.7rem;
-    }
-
-    /* Mobile buttons */
-    .stButton > button,
-    .stFormSubmitButton > button {
-        width: 100%;
-        min-height: 48px;
-        border-radius: 14px;
-        font-size: 1rem;
-        font-weight: 600;
-    }
-
-    /* Inputs */
-    .stTextInput input,
-    .stTextArea textarea {
-        border-radius: 12px;
-    }
-
-    /* Boy card */
-    .boy-card {
-        background: linear-gradient(
-            135deg,
-            #e8f5ff,
-            #cce8ff
-        );
-        border: 2px solid #4da6ff;
-        border-radius: 22px;
-        padding: 22px;
-        text-align: center;
-        box-shadow: 0 6px 20px rgba(77,166,255,0.15);
-        margin-bottom: 15px;
-    }
-
-    /* Girl card */
-    .girl-card {
-        background: linear-gradient(
-            135deg,
-            #fff0f7,
-            #ffd6e9
-        );
-        border: 2px solid #ff69b4;
-        border-radius: 22px;
-        padding: 22px;
-        text-align: center;
-        box-shadow: 0 6px 20px rgba(255,105,180,0.15);
-        margin-bottom: 15px;
-    }
-
-    .boy-title {
-        font-size: 20px;
-        font-weight: 700;
-        color: #1676d2;
-    }
-
-    .girl-title {
-        font-size: 20px;
-        font-weight: 700;
-        color: #e83e91;
-    }
-
-    .boy-percent {
-        font-size: 42px;
-        font-weight: 800;
-        color: #1676d2;
-    }
-
-    .girl-percent {
-        font-size: 42px;
-        font-weight: 800;
-        color: #e83e91;
-    }
-
-    .vote-count {
-        color: #555;
-        font-size: 15px;
-    }
-
-    .success-box {
-        padding: 22px;
-        border-radius: 20px;
-        background: #e9fff1;
-        border: 1px solid #9be7b4;
-        text-align: center;
     }
 
     .footer {
         text-align: center;
-        color: #999;
-        margin-top: 35px;
+        color: #999999;
+        margin-top: 40px;
         padding-bottom: 15px;
-        font-size: 0.9rem;
     }
 
-    /* Mobile specific adjustments */
     @media (max-width: 600px) {
 
         .block-container {
@@ -205,27 +111,7 @@ st.markdown(
         }
 
         .subtitle {
-            font-size: 0.95rem;
-        }
-
-        .section-title {
-            font-size: 1.45rem;
-        }
-
-        .boy-percent,
-        .girl-percent {
-            font-size: 38px;
-        }
-
-        .boy-card,
-        .girl-card {
-            padding: 18px;
-        }
-
-        /* Make Plotly fit mobile */
-        .js-plotly-plot,
-        .plot-container {
-            width: 100% !important;
+            font-size: 0.9rem;
         }
 
     }
@@ -237,7 +123,7 @@ st.markdown(
 
 
 # ============================================================
-# GOOGLE APPS SCRIPT
+# GOOGLE APPS SCRIPT - SUBMIT
 # ============================================================
 
 def submit_prediction(data):
@@ -268,6 +154,10 @@ def submit_prediction(data):
             "error": "Invalid response from Google Apps Script."
         }
 
+
+# ============================================================
+# GOOGLE APPS SCRIPT - GET DATA
+# ============================================================
 
 def get_predictions():
 
@@ -304,8 +194,14 @@ def get_predictions():
 result = get_predictions()
 
 if result.get("success"):
-    records = result.get("data", [])
+
+    records = result.get(
+        "data",
+        []
+    )
+
 else:
+
     records = []
 
 
@@ -319,11 +215,7 @@ st.markdown(
 )
 
 st.markdown(
-    """
-    <div class="subtitle">
-        Make your prediction and join the fun! 💕
-    </div>
-    """,
+    '<div class="subtitle">Make your prediction and join the fun! 💕</div>',
     unsafe_allow_html=True
 )
 
@@ -342,20 +234,23 @@ form_tab, gender_tab, admin_tab = st.tabs(
 
 
 # ============================================================
-# TAB 1 - FORM
+# TAB 1 - PREDICTION FORM
 # ============================================================
 
 with form_tab:
 
-    st.markdown(
-        '<div class="section-title">🎊 Make Your Prediction</div>',
-        unsafe_allow_html=True
+    st.title("🎊 Make Your Prediction")
+
+    st.write(
+        "Fill in your prediction below."
     )
 
-    with st.form("baby_prediction_form"):
+    with st.form(
+        "baby_prediction_form"
+    ):
 
         # ----------------------------------------------------
-        # SINGLE COLUMN - BETTER FOR MOBILE
+        # GUEST NAME
         # ----------------------------------------------------
 
         guest_name = st.text_input(
@@ -363,37 +258,71 @@ with form_tab:
             placeholder="Enter your full name"
         )
 
+        # ----------------------------------------------------
+        # ATTENDANCE
+        # ----------------------------------------------------
+
         attending = st.radio(
             "Are you attending the Baby Shower? *",
-            ["Yes", "No"],
+            [
+                "Yes",
+                "No"
+            ],
             horizontal=True
         )
 
+        # ----------------------------------------------------
+        # GENDER
+        # ----------------------------------------------------
+
         gender_vote = st.radio(
             "What do you predict? *",
-            ["Boy 👦", "Girl 👧"],
+            [
+                "Boy 👦",
+                "Girl 👧"
+            ],
             horizontal=True
         )
+
+        # ----------------------------------------------------
+        # DATE
+        # ----------------------------------------------------
 
         guessed_date = st.date_input(
             "When do you think baby will arrive? *",
             min_value=date.today()
         )
 
+        # ----------------------------------------------------
+        # BOY NAME
+        # ----------------------------------------------------
+
         baby_boy_name = st.text_input(
             "👦 Baby Boy Name Suggestion",
             placeholder="Suggest a boy name"
         )
+
+        # ----------------------------------------------------
+        # GIRL NAME
+        # ----------------------------------------------------
 
         baby_girl_name = st.text_input(
             "👧 Baby Girl Name Suggestion",
             placeholder="Suggest a girl name"
         )
 
+        # ----------------------------------------------------
+        # MESSAGE
+        # ----------------------------------------------------
+
         message = st.text_area(
             "💌 Message for the Parents",
-            placeholder="Write your wishes..."
+            placeholder="Write your wishes for the parents and baby..."
         )
+
+        # ----------------------------------------------------
+        # SUBMIT
+        # ----------------------------------------------------
 
         submitted = st.form_submit_button(
             "🎊 Submit My Prediction",
@@ -402,42 +331,70 @@ with form_tab:
 
 
     # ========================================================
-    # SUBMISSION
+    # PROCESS SUBMISSION
     # ========================================================
 
     if submitted:
 
         clean_guest_name = guest_name.strip()
+
         clean_boy_name = baby_boy_name.strip()
+
         clean_girl_name = baby_girl_name.strip()
+
         clean_message = message.strip()
+
+
+        # ----------------------------------------------------
+        # VALIDATION
+        # ----------------------------------------------------
 
         if not clean_guest_name:
 
-            st.error("Please enter your Guest Name.")
+            st.error(
+                "Please enter your Guest Name."
+            )
 
         elif guessed_date < date.today():
 
-            st.error("Please select a valid arrival date.")
+            st.error(
+                "Please select a valid arrival date."
+            )
 
         else:
 
-            gender_value = (
-                "Boy"
-                if gender_vote.startswith("Boy")
-                else "Girl"
-            )
+            # ------------------------------------------------
+            # GENDER VALUE
+            # ------------------------------------------------
+
+            if gender_vote.startswith("Boy"):
+
+                gender_value = "Boy"
+
+            else:
+
+                gender_value = "Girl"
+
+
+            # ------------------------------------------------
+            # DATA
+            # ------------------------------------------------
 
             prediction = {
 
-                "guest_name": clean_guest_name,
+                "guest_name":
+                    clean_guest_name,
 
-                "attending_yes_no": attending,
+                "attending_yes_no":
+                    attending,
 
-                "gender_vote": gender_value,
+                "gender_vote":
+                    gender_value,
 
                 "guessed_date":
-                    guessed_date.strftime("%Y-%m-%d"),
+                    guessed_date.strftime(
+                        "%Y-%m-%d"
+                    ),
 
                 "baby_boy_name":
                     clean_boy_name,
@@ -449,6 +406,11 @@ with form_tab:
                     clean_message
             }
 
+
+            # ------------------------------------------------
+            # SEND TO GOOGLE SHEET
+            # ------------------------------------------------
+
             with st.spinner(
                 "Saving your prediction..."
             ):
@@ -458,33 +420,34 @@ with form_tab:
                 )
 
 
-            if save_result.get("success"):
+            # ------------------------------------------------
+            # SUCCESS
+            # ------------------------------------------------
+
+            if save_result.get(
+                "success"
+            ):
 
                 st.balloons()
 
-                st.markdown(
-                    """
-                    <div class="success-box">
-
-                        <h2>🎉 Submitted! 🎉</h2>
-
-                        <p>
-                        Thank you for participating! 👶💕
-                        </p>
-
-                    </div>
-                    """,
-                    unsafe_allow_html=True
+                st.success(
+                    "🎉 Your prediction has been submitted!"
                 )
 
-                st.success(
-                    "Your prediction has been saved."
+                st.info(
+                    "Thank you for participating! 👶💕"
                 )
 
                 st.rerun()
 
 
-            elif save_result.get("duplicate"):
+            # ------------------------------------------------
+            # DUPLICATE
+            # ------------------------------------------------
+
+            elif save_result.get(
+                "duplicate"
+            ):
 
                 st.error(
                     "⚠️ This guest name has already submitted."
@@ -494,6 +457,10 @@ with form_tab:
                     "Each guest can submit only once."
                 )
 
+
+            # ------------------------------------------------
+            # ERROR
+            # ------------------------------------------------
 
             else:
 
@@ -512,25 +479,28 @@ with form_tab:
 
 
 # ============================================================
-# TAB 2 - GENDER
+# TAB 2 - GENDER PREDICTION
 # ============================================================
 
 with gender_tab:
 
-    st.markdown(
-        '<div class="section-title">🔮 Gender Predictions</div>',
-        unsafe_allow_html=True
+    st.title(
+        "🔮 Baby Gender Predictions"
     )
 
     st.caption(
         "What is everyone guessing? 💙💗"
     )
 
-    # --------------------------------------------------------
-    # VOTES
-    # --------------------------------------------------------
 
-    total_votes = len(records)
+    # ========================================================
+    # CALCULATE VOTES
+    # ========================================================
+
+    total_votes = len(
+        records
+    )
+
 
     gender_counter = Counter(
         str(
@@ -542,151 +512,151 @@ with gender_tab:
         for row in records
     )
 
+
     boy_votes = gender_counter.get(
         "Boy",
         0
     )
+
 
     girl_votes = gender_counter.get(
         "Girl",
         0
     )
 
+
+    # ========================================================
+    # CALCULATE PERCENTAGES
+    # ========================================================
+
     if total_votes > 0:
 
         boy_percentage = (
-            boy_votes / total_votes
+            boy_votes /
+            total_votes
         ) * 100
 
         girl_percentage = (
-            girl_votes / total_votes
+            girl_votes /
+            total_votes
         ) * 100
 
     else:
 
         boy_percentage = 0
+
         girl_percentage = 0
 
 
-    # --------------------------------------------------------
-    # BOY CARD
-    # --------------------------------------------------------
+    # ========================================================
+    # BOY / GIRL METRICS
+    # ========================================================
 
-    st.markdown(
-        f"""
-        <div class="boy-card">
-
-            <div style="font-size:52px;">
-                👦
-            </div>
-
-            <div class="boy-title">
-                Baby Boy
-            </div>
-
-            <div class="boy-percent">
-                {boy_percentage:.1f}%
-            </div>
-
-            <div class="vote-count">
-                {boy_votes}
-                vote{"s" if boy_votes != 1 else ""}
-            </div>
-
-        </div>
-        """,
-        unsafe_allow_html=True
+    col1, col2 = st.columns(
+        2
     )
 
 
-    # --------------------------------------------------------
-    # GIRL CARD
-    # --------------------------------------------------------
+    with col1:
 
-    st.markdown(
-        f"""
-        <div class="girl-card">
-
-            <div style="font-size:52px;">
-                👧
-            </div>
-
-            <div class="girl-title">
-                Baby Girl
-            </div>
-
-            <div class="girl-percent">
-                {girl_percentage:.1f}%
-            </div>
-
-            <div class="vote-count">
-                {girl_votes}
-                vote{"s" if girl_votes != 1 else ""}
-            </div>
-
-        </div>
-        """,
-        unsafe_allow_html=True
-    )
+        st.metric(
+            label="💙 Baby Boy",
+            value=f"{boy_percentage:.1f}%",
+            delta=f"{boy_votes} votes"
+        )
 
 
-    # --------------------------------------------------------
+    with col2:
+
+        st.metric(
+            label="💗 Baby Girl",
+            value=f"{girl_percentage:.1f}%",
+            delta=f"{girl_votes} votes"
+        )
+
+
+    # ========================================================
     # TOTAL
-    # --------------------------------------------------------
+    # ========================================================
 
     st.metric(
-        "🍼 Total Predictions",
-        total_votes
+        label="🍼 Total Predictions",
+        value=total_votes
     )
 
 
-    # --------------------------------------------------------
-    # PROGRESS
-    # --------------------------------------------------------
+    st.divider()
 
-    st.subheader("💙💗 Prediction Split")
+
+    # ========================================================
+    # PERCENTAGE BARS
+    # ========================================================
+
+    st.subheader(
+        "💙💗 Prediction Split"
+    )
+
 
     st.write(
         f"💙 Baby Boy — {boy_percentage:.1f}%"
     )
 
+
     st.progress(
-        int(round(boy_percentage))
+        int(
+            round(
+                boy_percentage
+            )
+        )
     )
+
 
     st.write(
         f"💗 Baby Girl — {girl_percentage:.1f}%"
     )
 
+
     st.progress(
-        int(round(girl_percentage))
+        int(
+            round(
+                girl_percentage
+            )
+        )
     )
 
 
-    # --------------------------------------------------------
-    # DONUT CHART
-    # --------------------------------------------------------
+    st.divider()
+
+
+    # ========================================================
+    # PLOTLY DONUT
+    # ========================================================
 
     if total_votes > 0:
 
         fig = go.Figure(
             data=[
                 go.Pie(
+
                     labels=[
                         "Baby Boy 👦",
                         "Baby Girl 👧"
                     ],
+
                     values=[
                         boy_votes,
                         girl_votes
                     ],
+
                     hole=0.60,
 
                     marker=dict(
+
                         colors=[
                             "#4DA6FF",
                             "#FF69B4"
                         ],
+
                         line=dict(
                             color="white",
                             width=4
@@ -698,7 +668,7 @@ with gender_tab:
                     textposition="inside",
 
                     textfont=dict(
-                        size=20,
+                        size=18,
                         color="white"
                     ),
 
@@ -715,18 +685,24 @@ with gender_tab:
 
         fig.update_layout(
 
-            height=420,
+            height=400,
 
             autosize=True,
 
             showlegend=True,
 
             legend=dict(
+
                 orientation="h",
+
                 yanchor="bottom",
-                y=-0.12,
+
+                y=-0.15,
+
                 xanchor="center",
+
                 x=0.5,
+
                 font=dict(
                     size=13
                 )
@@ -739,9 +715,13 @@ with gender_tab:
                 b=70
             ),
 
-            paper_bgcolor="rgba(0,0,0,0)",
+            paper_bgcolor=(
+                "rgba(0,0,0,0)"
+            ),
 
-            plot_bgcolor="rgba(0,0,0,0)"
+            plot_bgcolor=(
+                "rgba(0,0,0,0)"
+            )
         )
 
 
@@ -754,6 +734,7 @@ with gender_tab:
             }
         )
 
+
     else:
 
         st.info(
@@ -761,9 +742,9 @@ with gender_tab:
         )
 
 
-    # --------------------------------------------------------
+    # ========================================================
     # REFRESH
-    # --------------------------------------------------------
+    # ========================================================
 
     if st.button(
         "🔄 Refresh Predictions",
@@ -774,19 +755,28 @@ with gender_tab:
 
 
 # ============================================================
-# TAB 3 - PRIVATE
+# TAB 3 - PRIVATE DASHBOARD
 # ============================================================
 
 with admin_tab:
+
+    # ========================================================
+    # LOGIN
+    # ========================================================
 
     if not st.session_state.get(
         "admin_authenticated",
         False
     ):
 
-        st.markdown(
-            "### 🔐 Private Dashboard"
+        st.title(
+            "🔐 Private Dashboard"
         )
+
+        st.caption(
+            "Admin access only."
+        )
+
 
         password = st.text_input(
             "Admin Password",
@@ -794,12 +784,17 @@ with admin_tab:
             key="admin_password"
         )
 
+
         if st.button(
-            "Unlock",
-            key="admin_unlock"
+            "🔓 Unlock Dashboard",
+            key="admin_unlock",
+            use_container_width=True
         ):
 
-            if ADMIN_PASSWORD and password == ADMIN_PASSWORD:
+            if (
+                ADMIN_PASSWORD
+                and password == ADMIN_PASSWORD
+            ):
 
                 st.session_state[
                     "admin_authenticated"
@@ -814,10 +809,14 @@ with admin_tab:
                 )
 
 
+    # ========================================================
+    # ADMIN DASHBOARD
+    # ========================================================
+
     else:
 
-        st.markdown(
-            "### 🔐 Private Dashboard"
+        st.title(
+            "🔐 Private Dashboard"
         )
 
         st.success(
@@ -825,9 +824,14 @@ with admin_tab:
         )
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # ATTENDANCE
-        # ----------------------------------------------------
+        # ====================================================
+
+        st.subheader(
+            "👥 Attendance"
+        )
+
 
         attendance_counter = Counter(
             str(
@@ -839,10 +843,12 @@ with admin_tab:
             for row in records
         )
 
+
         attending_yes = attendance_counter.get(
             "Yes",
             0
         )
+
 
         attending_no = attendance_counter.get(
             "No",
@@ -855,10 +861,12 @@ with admin_tab:
             len(records)
         )
 
+
         st.metric(
             "✅ Attending",
             attending_yes
         )
+
 
         st.metric(
             "❌ Not Attending",
@@ -866,16 +874,20 @@ with admin_tab:
         )
 
 
-        # ----------------------------------------------------
-        # NAMES
-        # ----------------------------------------------------
+        st.divider()
 
-        st.markdown(
-            "### 👶 Baby Name Suggestions"
+
+        # ====================================================
+        # BABY BOY NAMES
+        # ====================================================
+
+        st.subheader(
+            "👦 Baby Boy Name Suggestions"
         )
 
+
         boy_names = []
-        girl_names = []
+
 
         for row in records:
 
@@ -886,12 +898,6 @@ with admin_tab:
                 )
             ).strip()
 
-            girl_name = str(
-                row.get(
-                    "Baby Girl Name",
-                    ""
-                )
-            ).strip()
 
             if boy_name:
 
@@ -899,16 +905,6 @@ with admin_tab:
                     boy_name
                 )
 
-            if girl_name:
-
-                girl_names.append(
-                    girl_name
-                )
-
-
-        st.markdown(
-            "#### 👦 Baby Boy Names"
-        )
 
         if boy_names:
 
@@ -925,9 +921,34 @@ with admin_tab:
             )
 
 
-        st.markdown(
-            "#### 👧 Baby Girl Names"
+        # ====================================================
+        # BABY GIRL NAMES
+        # ====================================================
+
+        st.subheader(
+            "👧 Baby Girl Name Suggestions"
         )
+
+
+        girl_names = []
+
+
+        for row in records:
+
+            girl_name = str(
+                row.get(
+                    "Baby Girl Name",
+                    ""
+                )
+            ).strip()
+
+
+            if girl_name:
+
+                girl_names.append(
+                    girl_name
+                )
+
 
         if girl_names:
 
@@ -944,15 +965,20 @@ with admin_tab:
             )
 
 
-        # ----------------------------------------------------
-        # GUEST RESPONSES
-        # ----------------------------------------------------
+        st.divider()
 
-        st.markdown(
-            "### 👨‍👩‍👧 Guest Responses"
+
+        # ====================================================
+        # ALL GUEST RESPONSES
+        # ====================================================
+
+        st.subheader(
+            "👨‍👩‍👧 Guest Responses"
         )
 
+
         admin_data = []
+
 
         for row in records:
 
@@ -1015,6 +1041,7 @@ with admin_tab:
                 admin_data
             )
 
+
             st.dataframe(
                 admin_df,
                 use_container_width=True,
@@ -1028,13 +1055,17 @@ with admin_tab:
             )
 
 
-        # ----------------------------------------------------
+        # ====================================================
         # LOGOUT
-        # ----------------------------------------------------
+        # ====================================================
+
+        st.divider()
+
 
         if st.button(
             "🔒 Lock Private Dashboard",
-            key="admin_logout"
+            key="admin_logout",
+            use_container_width=True
         ):
 
             st.session_state[
@@ -1049,16 +1080,6 @@ with admin_tab:
 # ============================================================
 
 st.markdown(
-    """
-    <div class="footer">
-
-        Made with ❤️ for the Baby Shower
-
-        <br>
-
-        👶 💙 🎀 💗 🍼
-
-    </div>
-    """,
+    '<div class="footer">Made with ❤️ for the Baby Shower<br>👶 💙 🎀 💗 🍼</div>',
     unsafe_allow_html=True
 )
