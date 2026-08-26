@@ -6,6 +6,7 @@ from pathlib import Path
 from io import BytesIO
 import plotly.graph_objects as go
 
+
 # ============================================================
 # CONFIGURATION
 # ============================================================
@@ -33,6 +34,14 @@ st.set_page_config(
     layout="centered",
     initial_sidebar_state="collapsed"
 )
+
+
+# ============================================================
+# FORM RESET STATE
+# ============================================================
+
+if "form_reset" not in st.session_state:
+    st.session_state.form_reset = 0
 
 
 # ============================================================
@@ -82,15 +91,6 @@ st.markdown(
         color: #5b4b8a;
         margin-top: 0.2rem;
         margin-bottom: 0.4rem;
-    }
-
-    .confirmation-box {
-        background: white;
-        border-radius: 18px;
-        padding: 20px;
-        border: 1px solid #eadff0;
-        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
-        margin-top: 15px;
     }
 
     .footer {
@@ -402,12 +402,14 @@ with form_tab:
         "Fill in your prediction below."
     )
 
+
     # --------------------------------------------------------
     # FORM
     # --------------------------------------------------------
+    # Changing the form key after submission resets all fields.
 
     with st.form(
-        "baby_prediction_form"
+        f"baby_prediction_form_{st.session_state.form_reset}"
     ):
 
         guest_name = st.text_input(
@@ -529,10 +531,13 @@ with form_tab:
 
             if result.get("success"):
 
+                # Clear cached database data.
+
                 st.cache_data.clear()
 
-                # Store submitted details in session state
-                # so they remain visible after submission.
+
+                # Save the submitted information so it
+                # remains visible after the form resets.
 
                 st.session_state[
                     "submission_confirmation"
@@ -561,6 +566,15 @@ with form_tab:
                     "message":
                         clean_message
                 }
+
+
+                # ------------------------------------------------
+                # RESET FORM
+                # ------------------------------------------------
+                # Changing the form key resets all input fields.
+
+                st.session_state.form_reset += 1
+
 
                 st.balloons()
 
@@ -625,11 +639,14 @@ with form_tab:
             unsafe_allow_html=True
         )
 
-
         st.caption(
             "Please review your submitted prediction below."
         )
 
+
+        # ----------------------------------------------------
+        # GUEST NAME
+        # ----------------------------------------------------
 
         st.info(
             f"👤 **Guest Name:** "
@@ -637,11 +654,19 @@ with form_tab:
         )
 
 
+        # ----------------------------------------------------
+        # ATTENDANCE
+        # ----------------------------------------------------
+
         st.write(
             f"✅ **Attending:** "
             f"{submission['attending']}"
         )
 
+
+        # ----------------------------------------------------
+        # GENDER
+        # ----------------------------------------------------
 
         if submission["gender"] == "Boy":
 
@@ -658,11 +683,19 @@ with form_tab:
             )
 
 
+        # ----------------------------------------------------
+        # DATE
+        # ----------------------------------------------------
+
         st.write(
             f"📅 **Predicted Arrival Date:** "
             f"{submission['guessed_date']}"
         )
 
+
+        # ----------------------------------------------------
+        # BOY NAME
+        # ----------------------------------------------------
 
         if submission["boy_name"]:
 
@@ -672,6 +705,10 @@ with form_tab:
             )
 
 
+        # ----------------------------------------------------
+        # GIRL NAME
+        # ----------------------------------------------------
+
         if submission["girl_name"]:
 
             st.write(
@@ -679,6 +716,10 @@ with form_tab:
                 f"{submission['girl_name']}"
             )
 
+
+        # ----------------------------------------------------
+        # MESSAGE
+        # ----------------------------------------------------
 
         if submission["message"]:
 
@@ -736,7 +777,6 @@ with gender_tab:
     else:
 
         boy_votes = 0
-
         girl_votes = 0
 
 
@@ -759,7 +799,6 @@ with gender_tab:
     else:
 
         boy_percentage = 0
-
         girl_percentage = 0
 
 
@@ -1213,6 +1252,7 @@ with admin_tab:
                 use_container_width=True
             )
 
+
         else:
 
             st.info(
@@ -1224,7 +1264,7 @@ with admin_tab:
 
 
         # ====================================================
-        # REFRESH
+        # REFRESH DASHBOARD
         # ====================================================
 
         if st.button(
