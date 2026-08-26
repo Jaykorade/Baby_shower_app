@@ -2,7 +2,6 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import date
-from collections import Counter
 import plotly.graph_objects as go
 from pathlib import Path
 
@@ -37,7 +36,7 @@ st.set_page_config(
 
 
 # ============================================================
-# MOBILE FRIENDLY CSS
+# MOBILE-FRIENDLY CSS
 # ============================================================
 
 st.markdown(
@@ -52,50 +51,69 @@ st.markdown(
         );
     }
 
+    /* More space at top so header/title is never cut */
     .block-container {
         max-width: 900px;
-        padding-top: 1rem;
+        padding-top: 3rem !important;
         padding-left: 1rem;
         padding-right: 1rem;
         padding-bottom: 2rem;
     }
 
+    /* Main Baby Shower title */
     .main-title {
         text-align: center;
-        font-size: 2.5rem;
+        font-size: 2.3rem;
         font-weight: 800;
         color: #5b4b8a;
-        margin-bottom: 5px;
+        margin-top: 0.3rem;
+        margin-bottom: 4px;
+        line-height: 1.2;
     }
 
     .subtitle {
         text-align: center;
-        color: #666;
-        font-size: 1rem;
-        margin-bottom: 20px;
+        color: #666666;
+        font-size: 0.95rem;
+        margin-bottom: 18px;
+    }
+
+    /* Smaller section headings */
+    .small-heading {
+        font-size: 1.35rem;
+        font-weight: 700;
+        color: #5b4b8a;
+        margin-top: 0.2rem;
+        margin-bottom: 0.4rem;
     }
 
     .footer {
         text-align: center;
-        color: #999;
+        color: #999999;
         margin-top: 40px;
         padding-bottom: 15px;
+        font-size: 0.85rem;
     }
 
+    /* Mobile */
     @media (max-width: 600px) {
 
         .block-container {
-            padding-left: 0.7rem;
-            padding-right: 0.7rem;
-            padding-top: 0.5rem;
+            padding-top: 2.5rem !important;
+            padding-left: 0.8rem;
+            padding-right: 0.8rem;
         }
 
         .main-title {
-            font-size: 2rem;
+            font-size: 1.9rem;
         }
 
         .subtitle {
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+        }
+
+        .small-heading {
+            font-size: 1.25rem;
         }
 
     }
@@ -159,7 +177,6 @@ def initialize_database():
     )
 
     connection.commit()
-
     connection.close()
 
 
@@ -167,7 +184,7 @@ initialize_database()
 
 
 # ============================================================
-# GET ALL PREDICTIONS
+# GET PREDICTIONS
 # ============================================================
 
 @st.cache_data(
@@ -181,16 +198,27 @@ def get_predictions():
     dataframe = pd.read_sql_query(
         """
         SELECT
+
             id,
+
             timestamp AS Timestamp,
+
             guest_name AS "Guest Name",
+
             attending_yes_no AS Attending,
+
             gender_vote AS "Gender Vote",
+
             guessed_date AS Date,
+
             baby_boy_name AS "Baby Boy Name",
+
             baby_girl_name AS "Baby Girl Name",
+
             message AS Message
+
         FROM predictions
+
         ORDER BY id ASC
         """,
         connection
@@ -202,7 +230,7 @@ def get_predictions():
 
 
 # ============================================================
-# INSERT PREDICTION
+# SAVE PREDICTION
 # ============================================================
 
 def submit_prediction(
@@ -224,14 +252,23 @@ def submit_prediction(
         cursor.execute(
             """
             INSERT INTO predictions (
+
                 guest_name,
+
                 attending_yes_no,
+
                 gender_vote,
+
                 guessed_date,
+
                 baby_boy_name,
+
                 baby_girl_name,
+
                 message
+
             )
+
             VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
@@ -246,7 +283,6 @@ def submit_prediction(
         )
 
         connection.commit()
-
         connection.close()
 
         return {
@@ -273,18 +309,14 @@ def submit_prediction(
 
 
 # ============================================================
-# LOAD DATA
+# LOAD DATABASE
 # ============================================================
 
 df = get_predictions()
 
-records = df.to_dict(
-    orient="records"
-)
-
 
 # ============================================================
-# HEADER
+# MAIN HEADER
 # ============================================================
 
 st.markdown(
@@ -317,11 +349,13 @@ form_tab, gender_tab, admin_tab = st.tabs(
 
 with form_tab:
 
-    st.title(
-        "🎊 Make Your Prediction"
+    # SMALLER HEADING
+    st.markdown(
+        '<div class="small-heading">🎊 Make Your Prediction</div>',
+        unsafe_allow_html=True
     )
 
-    st.write(
+    st.caption(
         "Fill in your prediction below."
     )
 
@@ -329,10 +363,18 @@ with form_tab:
         "baby_prediction_form"
     ):
 
+        # ----------------------------------------------------
+        # GUEST NAME
+        # ----------------------------------------------------
+
         guest_name = st.text_input(
             "Guest Name *",
             placeholder="Enter your full name"
         )
+
+        # ----------------------------------------------------
+        # ATTENDANCE
+        # ----------------------------------------------------
 
         attending = st.radio(
             "Are you attending the Baby Shower? *",
@@ -343,6 +385,10 @@ with form_tab:
             horizontal=True
         )
 
+        # ----------------------------------------------------
+        # GENDER
+        # ----------------------------------------------------
+
         gender_vote = st.radio(
             "What do you predict? *",
             [
@@ -352,25 +398,45 @@ with form_tab:
             horizontal=True
         )
 
+        # ----------------------------------------------------
+        # ARRIVAL DATE
+        # ----------------------------------------------------
+
         guessed_date = st.date_input(
             "When do you think baby will arrive? *",
             min_value=date.today()
         )
+
+        # ----------------------------------------------------
+        # BOY NAME
+        # ----------------------------------------------------
 
         baby_boy_name = st.text_input(
             "👦 Baby Boy Name Suggestion",
             placeholder="Suggest a boy name"
         )
 
+        # ----------------------------------------------------
+        # GIRL NAME
+        # ----------------------------------------------------
+
         baby_girl_name = st.text_input(
             "👧 Baby Girl Name Suggestion",
             placeholder="Suggest a girl name"
         )
 
+        # ----------------------------------------------------
+        # MESSAGE
+        # ----------------------------------------------------
+
         message = st.text_area(
             "💌 Message for the Parents",
             placeholder="Write your wishes for the parents and baby..."
         )
+
+        # ----------------------------------------------------
+        # SUBMIT
+        # ----------------------------------------------------
 
         submitted = st.form_submit_button(
             "🎊 Submit My Prediction",
@@ -407,13 +473,11 @@ with form_tab:
 
         else:
 
-            if gender_vote.startswith("Boy"):
-
-                gender_value = "Boy"
-
-            else:
-
-                gender_value = "Girl"
+            gender_value = (
+                "Boy"
+                if gender_vote.startswith("Boy")
+                else "Girl"
+            )
 
 
             result = submit_prediction(
@@ -486,8 +550,9 @@ with form_tab:
 
 with gender_tab:
 
-    st.title(
-        "🔮 Baby Gender Predictions"
+    st.markdown(
+        '<div class="small-heading">🔮 Baby Gender Predictions</div>',
+        unsafe_allow_html=True
     )
 
     st.caption(
@@ -495,12 +560,11 @@ with gender_tab:
     )
 
 
-    # ========================================================
-    # CALCULATE VOTES
-    # ========================================================
+    # --------------------------------------------------------
+    # VOTES
+    # --------------------------------------------------------
 
     total_votes = len(df)
-
 
     if total_votes > 0:
 
@@ -519,9 +583,12 @@ with gender_tab:
     else:
 
         boy_votes = 0
-
         girl_votes = 0
 
+
+    # --------------------------------------------------------
+    # PERCENTAGES
+    # --------------------------------------------------------
 
     if total_votes > 0:
 
@@ -538,13 +605,12 @@ with gender_tab:
     else:
 
         boy_percentage = 0
-
         girl_percentage = 0
 
 
-    # ========================================================
+    # --------------------------------------------------------
     # SUMMARY
-    # ========================================================
+    # --------------------------------------------------------
 
     col1, col2 = st.columns(2)
 
@@ -552,33 +618,33 @@ with gender_tab:
     with col1:
 
         st.metric(
-            label="💙 Baby Boy",
-            value=f"{boy_percentage:.1f}%",
-            delta=f"{boy_votes} votes"
+            "💙 Baby Boy",
+            f"{boy_percentage:.1f}%",
+            f"{boy_votes} votes"
         )
 
 
     with col2:
 
         st.metric(
-            label="💗 Baby Girl",
-            value=f"{girl_percentage:.1f}%",
-            delta=f"{girl_votes} votes"
+            "💗 Baby Girl",
+            f"{girl_percentage:.1f}%",
+            f"{girl_votes} votes"
         )
 
 
     st.metric(
-        label="🍼 Total Predictions",
-        value=total_votes
+        "🍼 Total Predictions",
+        total_votes
     )
 
 
     st.divider()
 
 
-    # ========================================================
-    # PROGRESS BARS
-    # ========================================================
+    # --------------------------------------------------------
+    # PROGRESS
+    # --------------------------------------------------------
 
     st.subheader(
         "💙💗 Prediction Split"
@@ -614,9 +680,9 @@ with gender_tab:
     st.divider()
 
 
-    # ========================================================
-    # DONUT CHART
-    # ========================================================
+    # --------------------------------------------------------
+    # CHART
+    # --------------------------------------------------------
 
     if total_votes > 0:
 
@@ -697,13 +763,9 @@ with gender_tab:
                 b=70
             ),
 
-            paper_bgcolor=(
-                "rgba(0,0,0,0)"
-            ),
+            paper_bgcolor="rgba(0,0,0,0)",
 
-            plot_bgcolor=(
-                "rgba(0,0,0,0)"
-            )
+            plot_bgcolor="rgba(0,0,0,0)"
         )
 
 
@@ -727,9 +789,9 @@ with gender_tab:
         )
 
 
-    # ========================================================
+    # --------------------------------------------------------
     # REFRESH
-    # ========================================================
+    # --------------------------------------------------------
 
     if st.button(
         "🔄 Refresh Predictions",
@@ -748,18 +810,24 @@ with gender_tab:
 
 with admin_tab:
 
-    # ========================================================
+    # --------------------------------------------------------
     # LOGIN
-    # ========================================================
+    # --------------------------------------------------------
 
     if not st.session_state.get(
         "admin_authenticated",
         False
     ):
 
-        st.title(
-            "🔐 Private Dashboard"
+        st.markdown(
+            '<div class="small-heading">🔐 Private Dashboard</div>',
+            unsafe_allow_html=True
         )
+
+        st.caption(
+            "Admin access only."
+        )
+
 
         password = st.text_input(
             "Admin Password",
@@ -792,14 +860,15 @@ with admin_tab:
                 )
 
 
-    # ========================================================
+    # --------------------------------------------------------
     # ADMIN DASHBOARD
-    # ========================================================
+    # --------------------------------------------------------
 
     else:
 
-        st.title(
-            "🔐 Private Dashboard"
+        st.markdown(
+            '<div class="small-heading">🔐 Private Dashboard</div>',
+            unsafe_allow_html=True
         )
 
         st.success(
