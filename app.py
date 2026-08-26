@@ -2,8 +2,9 @@ import streamlit as st
 import sqlite3
 import pandas as pd
 from datetime import date
-import plotly.graph_objects as go
 from pathlib import Path
+from io import BytesIO
+import plotly.graph_objects as go
 
 
 # ============================================================
@@ -51,7 +52,6 @@ st.markdown(
         );
     }
 
-    /* More space at top so header/title is never cut */
     .block-container {
         max-width: 900px;
         padding-top: 3rem !important;
@@ -60,7 +60,6 @@ st.markdown(
         padding-bottom: 2rem;
     }
 
-    /* Main Baby Shower title */
     .main-title {
         text-align: center;
         font-size: 2.3rem;
@@ -78,13 +77,21 @@ st.markdown(
         margin-bottom: 18px;
     }
 
-    /* Smaller section headings */
     .small-heading {
-        font-size: 1.35rem;
+        font-size: 1.3rem;
         font-weight: 700;
         color: #5b4b8a;
         margin-top: 0.2rem;
         margin-bottom: 0.4rem;
+    }
+
+    .confirmation-box {
+        background: white;
+        border-radius: 18px;
+        padding: 20px;
+        border: 1px solid #eadff0;
+        box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+        margin-top: 15px;
     }
 
     .footer {
@@ -95,7 +102,6 @@ st.markdown(
         font-size: 0.85rem;
     }
 
-    /* Mobile */
     @media (max-width: 600px) {
 
         .block-container {
@@ -113,7 +119,7 @@ st.markdown(
         }
 
         .small-heading {
-            font-size: 1.25rem;
+            font-size: 1.2rem;
         }
 
     }
@@ -141,7 +147,7 @@ def get_connection():
 
 
 # ============================================================
-# CREATE DATABASE
+# INITIALIZE DATABASE
 # ============================================================
 
 def initialize_database():
@@ -309,6 +315,45 @@ def submit_prediction(
 
 
 # ============================================================
+# CREATE EXCEL FILE
+# ============================================================
+
+def create_excel_file(dataframe):
+
+    output = BytesIO()
+
+    export_columns = [
+        "Timestamp",
+        "Guest Name",
+        "Attending",
+        "Gender Vote",
+        "Date",
+        "Baby Boy Name",
+        "Baby Girl Name",
+        "Message"
+    ]
+
+    export_df = dataframe[
+        export_columns
+    ].copy()
+
+    with pd.ExcelWriter(
+        output,
+        engine="openpyxl"
+    ):
+
+        export_df.to_excel(
+            output,
+            index=False,
+            sheet_name="Baby Shower"
+        )
+
+    output.seek(0)
+
+    return output.getvalue()
+
+
+# ============================================================
 # LOAD DATABASE
 # ============================================================
 
@@ -349,7 +394,6 @@ form_tab, gender_tab, admin_tab = st.tabs(
 
 with form_tab:
 
-    # SMALLER HEADING
     st.markdown(
         '<div class="small-heading">🎊 Make Your Prediction</div>',
         unsafe_allow_html=True
@@ -359,22 +403,18 @@ with form_tab:
         "Fill in your prediction below."
     )
 
+    # --------------------------------------------------------
+    # FORM
+    # --------------------------------------------------------
+
     with st.form(
         "baby_prediction_form"
     ):
-
-        # ----------------------------------------------------
-        # GUEST NAME
-        # ----------------------------------------------------
 
         guest_name = st.text_input(
             "Guest Name *",
             placeholder="Enter your full name"
         )
-
-        # ----------------------------------------------------
-        # ATTENDANCE
-        # ----------------------------------------------------
 
         attending = st.radio(
             "Are you attending the Baby Shower? *",
@@ -385,10 +425,6 @@ with form_tab:
             horizontal=True
         )
 
-        # ----------------------------------------------------
-        # GENDER
-        # ----------------------------------------------------
-
         gender_vote = st.radio(
             "What do you predict? *",
             [
@@ -398,45 +434,25 @@ with form_tab:
             horizontal=True
         )
 
-        # ----------------------------------------------------
-        # ARRIVAL DATE
-        # ----------------------------------------------------
-
         guessed_date = st.date_input(
             "When do you think baby will arrive? *",
             min_value=date.today()
         )
-
-        # ----------------------------------------------------
-        # BOY NAME
-        # ----------------------------------------------------
 
         baby_boy_name = st.text_input(
             "👦 Baby Boy Name Suggestion",
             placeholder="Suggest a boy name"
         )
 
-        # ----------------------------------------------------
-        # GIRL NAME
-        # ----------------------------------------------------
-
         baby_girl_name = st.text_input(
             "👧 Baby Girl Name Suggestion",
             placeholder="Suggest a girl name"
         )
 
-        # ----------------------------------------------------
-        # MESSAGE
-        # ----------------------------------------------------
-
         message = st.text_area(
             "💌 Message for the Parents",
             placeholder="Write your wishes for the parents and baby..."
         )
-
-        # ----------------------------------------------------
-        # SUBMIT
-        # ----------------------------------------------------
 
         submitted = st.form_submit_button(
             "🎊 Submit My Prediction",
@@ -459,6 +475,10 @@ with form_tab:
         clean_message = message.strip()
 
 
+        # ----------------------------------------------------
+        # VALIDATION
+        # ----------------------------------------------------
+
         if not clean_guest_name:
 
             st.error(
@@ -480,6 +500,10 @@ with form_tab:
             )
 
 
+            # ------------------------------------------------
+            # SAVE TO SQLITE
+            # ------------------------------------------------
+
             result = submit_prediction(
 
                 guest_name=clean_guest_name,
@@ -500,22 +524,55 @@ with form_tab:
             )
 
 
+            # ------------------------------------------------
+            # SUCCESS
+            # ------------------------------------------------
+
             if result.get("success"):
 
                 st.cache_data.clear()
 
+                # Store submitted details in session state
+                # so they remain visible after submission.
+
+                st.session_state[
+                    "submission_confirmation"
+                ] = {
+
+                    "guest_name":
+                        clean_guest_name,
+
+                    "attending":
+                        attending,
+
+                    "gender":
+                        gender_value,
+
+                    "guessed_date":
+                        guessed_date.strftime(
+                            "%d %B %Y"
+                        ),
+
+                    "boy_name":
+                        clean_boy_name,
+
+                    "girl_name":
+                        clean_girl_name,
+
+                    "message":
+                        clean_message
+                }
+
                 st.balloons()
 
                 st.success(
-                    "🎉 Your prediction has been submitted!"
+                    "🎉 Your prediction has been submitted successfully!"
                 )
 
-                st.info(
-                    "Thank you for participating! 👶💕"
-                )
 
-                st.rerun()
-
+            # ------------------------------------------------
+            # DUPLICATE
+            # ------------------------------------------------
 
             elif result.get("duplicate"):
 
@@ -527,6 +584,10 @@ with form_tab:
                     "Each guest can submit only once."
                 )
 
+
+            # ------------------------------------------------
+            # ERROR
+            # ------------------------------------------------
 
             else:
 
@@ -542,6 +603,98 @@ with form_tab:
                         )
                     )
                 )
+
+
+    # ========================================================
+    # SUBMISSION CONFIRMATION
+    # ========================================================
+
+    if st.session_state.get(
+        "submission_confirmation"
+    ):
+
+        submission = st.session_state[
+            "submission_confirmation"
+        ]
+
+
+        st.divider()
+
+
+        st.markdown(
+            '<div class="small-heading">💝 Your Submitted Details</div>',
+            unsafe_allow_html=True
+        )
+
+
+        st.caption(
+            "Please review your submitted prediction below."
+        )
+
+
+        st.info(
+            f"👤 **Guest Name:** "
+            f"{submission['guest_name']}"
+        )
+
+
+        st.write(
+            f"✅ **Attending:** "
+            f"{submission['attending']}"
+        )
+
+
+        if submission["gender"] == "Boy":
+
+            st.write(
+                "🔮 **Gender Prediction:** "
+                "💙 Boy 👦"
+            )
+
+        else:
+
+            st.write(
+                "🔮 **Gender Prediction:** "
+                "💗 Girl 👧"
+            )
+
+
+        st.write(
+            f"📅 **Predicted Arrival Date:** "
+            f"{submission['guessed_date']}"
+        )
+
+
+        if submission["boy_name"]:
+
+            st.write(
+                f"👦 **Baby Boy Name:** "
+                f"{submission['boy_name']}"
+            )
+
+
+        if submission["girl_name"]:
+
+            st.write(
+                f"👧 **Baby Girl Name:** "
+                f"{submission['girl_name']}"
+            )
+
+
+        if submission["message"]:
+
+            st.write(
+                "💌 **Message:**"
+            )
+
+            st.info(
+                submission["message"]
+            )
+
+
+        st.success(
+            "💕 Thank you for being part of our Baby Shower!"
+        )
 
 
 # ============================================================
@@ -566,6 +719,7 @@ with gender_tab:
 
     total_votes = len(df)
 
+
     if total_votes > 0:
 
         boy_votes = int(
@@ -583,6 +737,7 @@ with gender_tab:
     else:
 
         boy_votes = 0
+
         girl_votes = 0
 
 
@@ -605,6 +760,7 @@ with gender_tab:
     else:
 
         boy_percentage = 0
+
         girl_percentage = 0
 
 
@@ -681,7 +837,7 @@ with gender_tab:
 
 
     # --------------------------------------------------------
-    # CHART
+    # DONUT CHART
     # --------------------------------------------------------
 
     if total_votes > 0:
@@ -904,10 +1060,12 @@ with admin_tab:
             len(df)
         )
 
+
         st.metric(
             "✅ Attending",
             attending_yes
         )
+
 
         st.metric(
             "❌ Not Attending",
@@ -1022,6 +1180,38 @@ with admin_tab:
                 display_df,
                 use_container_width=True,
                 hide_index=True
+            )
+
+
+            # =================================================
+            # EXCEL DOWNLOAD
+            # =================================================
+
+            st.divider()
+
+            st.subheader(
+                "📥 Download Guest Data"
+            )
+
+            st.caption(
+                "Download all guest responses as an Excel file."
+            )
+
+
+            excel_file = create_excel_file(
+                df
+            )
+
+
+            st.download_button(
+                label="📊 Download Excel",
+                data=excel_file,
+                file_name="Baby_Shower_Guest_Responses.xlsx",
+                mime=(
+                    "application/vnd.openxmlformats-officedocument."
+                    "spreadsheetml.sheet"
+                ),
+                use_container_width=True
             )
 
         else:
