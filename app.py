@@ -94,6 +94,31 @@ st.markdown(
         margin-bottom: 18px;
     }
 
+
+    .info-card {
+        background: rgba(255, 255, 255, 0.88);
+        border: 1px solid #eadff2;
+        border-radius: 16px;
+        padding: 16px 18px;
+        margin: 12px auto 20px auto;
+        max-width: 820px;
+        box-shadow: 0 2px 10px rgba(91, 75, 138, 0.06);
+    }
+
+    .info-card-title {
+        font-weight: 700;
+        color: #5b4b8a;
+        font-size: 1.05rem;
+        margin-bottom: 7px;
+    }
+
+    .info-card-text {
+        color: #555555;
+        font-size: 0.92rem;
+        line-height: 1.55;
+        margin: 0;
+    }
+
     .small-heading {
         font-size: 1.3rem;
         font-weight: 700;
@@ -523,6 +548,43 @@ st.markdown(
     <div class="subtitle">
         {tr("Make your prediction and join the fun! 💕",
             "तुमचा अंदाज नोंदवा आणि या आनंदात सहभागी व्हा! 💕")}
+    </div>
+    """,
+    unsafe_allow_html=True
+)
+
+
+
+# ============================================================
+# APP INFORMATION / PURPOSE
+# ============================================================
+
+if language == "Marathi":
+    info_title = "💝 हा फॉर्म कशासाठी आहे?"
+    info_text = (
+        "आमच्या Baby Shower च्या आनंदात सहभागी होण्यासाठी हा मजेदार फॉर्म भरा! "
+        "तुमचे नाव, कार्यक्रमाला उपस्थित राहणार आहात का, बाळाबद्दल तुमचा अंदाज, "
+        "बाळाच्या आगमनाची अपेक्षित तारीख, मुलाचे/मुलीचे नाव आणि पालकांसाठी "
+        "तुमचा शुभेच्छा संदेश शेअर करा. 🎉<br><br>"
+        "<b>कृपया प्रत्येक व्यक्तीने एकदाच फॉर्म भरावा.</b> "
+        "तुमची उत्तरे Baby Shower मधील मजेदार अंदाज आणि आठवणींसाठी वापरली जातील. 💕"
+    )
+else:
+    info_title = "💝 What is this form for?"
+    info_text = (
+        "Fill out this fun form to be part of our Baby Shower celebration! "
+        "Share your name, whether you are attending, your baby gender prediction, "
+        "your expected arrival date, baby name suggestions, and a special message "
+        "for the parents. 🎉<br><br>"
+        "<b>Please submit the form only once per person.</b> "
+        "Your answers will be used for the fun predictions and Baby Shower memories. 💕"
+    )
+
+st.markdown(
+    f"""
+    <div class="info-card">
+        <div class="info-card-title">{info_title}</div>
+        <p class="info-card-text">{info_text}</p>
     </div>
     """,
     unsafe_allow_html=True
