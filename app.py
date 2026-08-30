@@ -681,144 +681,144 @@ with form_tab:
 
 
     # ========================================================
-    # SUBMISSION
-    # ========================================================
+        # SUBMISSION
+        # ========================================================
 
-    if submitted:
+        if submitted:
 
-        clean_guest_name = guest_name.strip()
-        clean_boy_name = baby_boy_name.strip()
-        clean_girl_name = baby_girl_name.strip()
-        clean_message = message.strip()
-
-
-        # ----------------------------------------------------
-        # VALIDATION
-        # ----------------------------------------------------
-
-        if not clean_guest_name:
-
-            st.error(
-                "Please enter your Guest Name."
-            )
-
-        else:
-
-            gender_value = (
-                "Boy"
-                if gender_vote.startswith("Boy")
-                else "Girl"
-            )
+            clean_guest_name = guest_name.strip()
+            clean_boy_name = baby_boy_name.strip()
+            clean_girl_name = baby_girl_name.strip()
+            clean_message = message.strip()
 
 
-            # ------------------------------------------------
-            # SAVE
-            # ------------------------------------------------
+            # ----------------------------------------------------
+            # VALIDATION
+            # ----------------------------------------------------
 
-            result = submit_prediction(
-
-                guest_name=clean_guest_name,
-
-                attending=attending,
-
-                gender=gender_value,
-
-                guessed_date=guessed_date.strftime(
-                    "%Y-%m-%d"
-                ),
-
-                boy_name=clean_boy_name,
-
-                girl_name=clean_girl_name,
-
-                message=clean_message
-            )
-
-
-            # ------------------------------------------------
-            # SUCCESS
-            # ------------------------------------------------
-
-            if result["success"]:
-
-                st.session_state[
-                    "submission_confirmation"
-                ] = {
-
-                    "guest_name":
-                        clean_guest_name,
-
-                    "attending":
-                        attending,
-
-                    "gender":
-                        gender_value,
-
-                    "guessed_date":
-                        guessed_date.strftime(
-                            "%d %B %Y"
-                        ),
-
-                    "boy_name":
-                        clean_boy_name,
-
-                    "girl_name":
-                        clean_girl_name,
-
-                    "message":
-                        clean_message
-                }
-
-
-                # Clear database cache
-                st.cache_data.clear()
-
-
-                # IMPORTANT:
-                # New form key creates completely
-                # empty widgets after rerun.
-
-                st.session_state.form_reset += 1
-
-
-                st.balloons()
-
-                st.rerun()
-
-
-            # ------------------------------------------------
-            # DUPLICATE
-            # ------------------------------------------------
-
-            elif result.get("duplicate"):
+            if not clean_guest_name:
 
                 st.error(
-                    "⚠️ This guest name has already submitted."
+                    "Please enter your Guest Name."
                 )
-
-                st.info(
-                    "Each guest can submit only once."
-                )
-
-
-            # ------------------------------------------------
-            # OTHER ERROR
-            # ------------------------------------------------
 
             else:
 
-                st.error(
-                    "❌ Unable to save your prediction."
+                gender_value = (
+                    "Boy"
+                    if gender_vote.startswith("Boy")
+                    else "Girl"
                 )
 
-                if result.get("error"):
 
-                    st.caption(
-                        str(result["error"])
+                # ------------------------------------------------
+                # SAVE
+                # ------------------------------------------------
+
+                result = submit_prediction(
+
+                    guest_name=clean_guest_name,
+
+                    attending=attending,
+
+                    gender=gender_value,
+
+                    guessed_date=guessed_date.strftime(
+                        "%Y-%m-%d"
+                    ),
+
+                    boy_name=clean_boy_name,
+
+                    girl_name=clean_girl_name,
+
+                    message=clean_message
+                )
+
+
+                # ------------------------------------------------
+                # SUCCESS
+                # ------------------------------------------------
+
+                if result["success"]:
+
+                    st.session_state[
+                        "submission_confirmation"
+                    ] = {
+
+                        "guest_name":
+                            clean_guest_name,
+
+                        "attending":
+                            attending,
+
+                        "gender":
+                            gender_value,
+
+                        "guessed_date":
+                            guessed_date.strftime(
+                                "%d %B %Y"
+                            ),
+
+                        "boy_name":
+                            clean_boy_name,
+
+                        "girl_name":
+                            clean_girl_name,
+
+                        "message":
+                            clean_message
+                    }
+
+
+                    # Clear database cache
+                    st.cache_data.clear()
+
+
+                    # IMPORTANT:
+                    # New form key creates completely
+                    # empty widgets after rerun.
+
+                    st.session_state.form_reset += 1
+
+
+                    st.balloons()
+
+                    st.rerun()
+
+
+                # ------------------------------------------------
+                # DUPLICATE
+                # ------------------------------------------------
+
+                elif result.get("duplicate"):
+
+                    st.error(
+                        "⚠️ This guest name has already submitted."
+                    )
+
+                    st.info(
+                        "Each guest can submit only once."
                     )
 
 
-    # ========================================================
+                # ------------------------------------------------
+                # OTHER ERROR
+                # ------------------------------------------------
+
+                else:
+
+                    st.error(
+                        "❌ Unable to save your prediction."
+                    )
+
+                    if result.get("error"):
+
+                        st.caption(
+                            str(result["error"])
+                        )
+
+
+        # ========================================================
     # CONFIRMATION
     # ========================================================
 
