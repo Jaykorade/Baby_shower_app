@@ -83,6 +83,82 @@ st.markdown(
         );
     }
 
+
+    /* ========================================================
+       LARGE / EASY-TO-READ UI
+       ======================================================== */
+
+    html, body, [class*="css"] {
+        font-size: 18px;
+    }
+
+    .stApp {
+        font-size: 18px;
+    }
+
+    /* Form labels and general text */
+    .stTextInput label,
+    .stTextArea label,
+    .stDateInput label,
+    .stRadio label,
+    .stSelectbox label,
+    .stCheckbox label,
+    .stCaption,
+    .stMarkdown,
+    .stAlert {
+        font-size: 18px !important;
+    }
+
+    /* Radio options */
+    .stRadio [role="radiogroup"] label {
+        font-size: 19px !important;
+        padding: 8px 10px !important;
+        min-height: 42px;
+    }
+
+    .stRadio [role="radiogroup"] label > div:first-child {
+        transform: scale(1.25);
+        margin-right: 8px;
+    }
+
+    /* Text boxes / date input */
+    .stTextInput input,
+    .stTextArea textarea,
+    .stDateInput input {
+        font-size: 18px !important;
+        min-height: 46px !important;
+    }
+
+    /* Buttons */
+    .stButton button,
+    .stFormSubmitButton button,
+    .stDownloadButton button {
+        font-size: 18px !important;
+        min-height: 48px !important;
+        font-weight: 600 !important;
+    }
+
+    /* Tabs */
+    .stTabs [data-baseweb="tab"] {
+        font-size: 18px !important;
+        padding: 12px 16px !important;
+    }
+
+    /* Metrics */
+    [data-testid="stMetricLabel"] {
+        font-size: 17px !important;
+    }
+
+    [data-testid="stMetricValue"] {
+        font-size: 28px !important;
+    }
+
+    /* Captions */
+    .stCaption {
+        font-size: 16px !important;
+    }
+
+
     .block-container {
         max-width: 900px;
         padding-top: 2.5rem !important;
