@@ -89,11 +89,11 @@ st.markdown(
        ======================================================== */
 
     html, body, [class*="css"] {
-        font-size: 18px;
+        font-size: 21px;
     }
 
     .stApp {
-        font-size: 18px;
+        font-size: 21px;
     }
 
     /* Form labels and general text */
@@ -106,12 +106,12 @@ st.markdown(
     .stCaption,
     .stMarkdown,
     .stAlert {
-        font-size: 18px !important;
+        font-size: 21px !important;
     }
 
     /* Radio options */
     .stRadio [role="radiogroup"] label {
-        font-size: 19px !important;
+        font-size: 21px !important;
         padding: 8px 10px !important;
         min-height: 42px;
     }
@@ -125,37 +125,43 @@ st.markdown(
     .stTextInput input,
     .stTextArea textarea,
     .stDateInput input {
-        font-size: 18px !important;
-        min-height: 46px !important;
+        font-size: 21px !important;
+        min-height: 52px !important;
     }
 
     /* Buttons */
     .stButton button,
     .stFormSubmitButton button,
     .stDownloadButton button {
-        font-size: 18px !important;
-        min-height: 48px !important;
+        font-size: 21px !important;
+        min-height: 54px !important;
         font-weight: 600 !important;
+    }
+
+    /* Larger native prediction progress bars */
+    [data-testid="stProgress"] {
+        height: 18px !important;
+        margin-bottom: 18px !important;
     }
 
     /* Tabs */
     .stTabs [data-baseweb="tab"] {
-        font-size: 18px !important;
+        font-size: 21px !important;
         padding: 12px 16px !important;
     }
 
     /* Metrics */
     [data-testid="stMetricLabel"] {
-        font-size: 17px !important;
+        font-size: 19px !important;
     }
 
     [data-testid="stMetricValue"] {
-        font-size: 28px !important;
+        font-size: 32px !important;
     }
 
     /* Captions */
     .stCaption {
-        font-size: 16px !important;
+        font-size: 18px !important;
     }
 
 
@@ -169,7 +175,7 @@ st.markdown(
 
     .main-title {
         text-align: center;
-        font-size: 2.25rem;
+        font-size: 2.55rem;
         font-weight: 800;
         color: #5b4b8a;
         margin-bottom: 4px;
@@ -179,7 +185,7 @@ st.markdown(
     .subtitle {
         text-align: center;
         color: #666666;
-        font-size: 0.95rem;
+        font-size: 1.05rem;
         margin-bottom: 18px;
     }
 
@@ -196,19 +202,19 @@ st.markdown(
     .info-card-title {
         font-weight: 700;
         color: #5b4b8a;
-        font-size: 1.05rem;
+        font-size: 1.2rem;
         margin-bottom: 7px;
     }
 
     .info-card-text {
         color: #555555;
-        font-size: 0.92rem;
+        font-size: 1.02rem;
         line-height: 1.55;
         margin: 0;
     }
 
     .small-heading {
-        font-size: 1.3rem;
+        font-size: 1.5rem;
         font-weight: 700;
         color: #5b4b8a;
         margin-top: 0.2rem;
@@ -219,7 +225,7 @@ st.markdown(
         display: flex;
         justify-content: space-between;
         align-items: center;
-        font-size: 0.95rem;
+        font-size: 1.05rem;
         font-weight: 600;
         margin-bottom: 5px;
     }
@@ -736,12 +742,12 @@ with form_tab:
             )
 
             baby_boy_name = st.text_input(
-                "👦 Baby Boy Name Suggestion" if language == "English" else "👦 मुलाच्या नावाची सूचना",
+                "👦 Baby Boy Name Suggestion" if language == "English" else "👦 मुलासाठी नाव सुचवा",
                 placeholder="Suggest a baby boy name" if language == "English" else "मुलासाठी नाव सुचवा"
             )
 
             baby_girl_name = st.text_input(
-                "👧 Baby Girl Name Suggestion" if language == "English" else "👧 मुलीच्या नावाची सूचना",
+                "👧 Baby Girl Name Suggestion" if language == "English" else "👧 मुलीसाठी नाव सुचवा",
                 placeholder="Suggest a baby girl name" if language == "English" else "मुलीसाठी नाव सुचवा"
             )
 
@@ -1087,31 +1093,27 @@ with gender_tab:
     # BOY PROGRESS
     # ========================================================
 
-    st.markdown(
-        f"""
-        <div class="prediction-label">
+    boy_col1, boy_col2 = st.columns([4, 1])
 
-            <span class="boy-label">
-                💙 Baby Boy
-            </span>
+    with boy_col1:
+        st.markdown(
+            '<div class="boy-label" style="font-size:19px; font-weight:600;">'
+            '💙 Baby Boy'
+            '</div>',
+            unsafe_allow_html=True
+        )
 
-            <span>
-                {boy_percentage:.1f}%
-            </span>
+    with boy_col2:
+        st.markdown(
+            f'<div style="text-align:right; font-size:19px; font-weight:600;">'
+            f'{boy_percentage:.1f}%'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
-        </div>
-
-        <div class="prediction-bar-container
-                    boy-bar-background">
-
-            <div
-                class="prediction-bar boy-bar"
-                style="width: {boy_percentage:.1f}%;">
-            </div>
-
-        </div>
-        """,
-        unsafe_allow_html=True
+    st.progress(
+        int(round(boy_percentage)),
+        text=None
     )
 
 
@@ -1119,35 +1121,30 @@ with gender_tab:
     # GIRL PROGRESS
     # ========================================================
 
-    st.markdown(
-        f"""
-        <div class="prediction-label">
+    girl_col1, girl_col2 = st.columns([4, 1])
 
-            <span class="girl-label">
-                💗 Baby Girl
-            </span>
+    with girl_col1:
+        st.markdown(
+            '<div class="girl-label" style="font-size:19px; font-weight:600;">'
+            '💗 Baby Girl'
+            '</div>',
+            unsafe_allow_html=True
+        )
 
-            <span>
-                {girl_percentage:.1f}%
-            </span>
+    with girl_col2:
+        st.markdown(
+            f'<div style="text-align:right; font-size:19px; font-weight:600;">'
+            f'{girl_percentage:.1f}%'
+            f'</div>',
+            unsafe_allow_html=True
+        )
 
-        </div>
-
-        <div class="prediction-bar-container
-                    girl-bar-background">
-
-            <div
-                class="prediction-bar girl-bar"
-                style="width: {girl_percentage:.1f}%;">
-            </div>
-
-        </div>
-        """,
-        unsafe_allow_html=True
+    st.progress(
+        int(round(girl_percentage)),
+        text=None
     )
 
 
-    # ========================================================
     # DONUT CHART
     # ========================================================
 
