@@ -485,19 +485,44 @@ def create_excel_file(dataframe):
 df = get_predictions()
 
 
+
+# ============================================================
+# LANGUAGE SELECTION
+# ============================================================
+
+LANGUAGE_OPTIONS = {
+    "English": "English",
+    "मराठी": "मराठी"
+}
+
+selected_language = st.radio(
+    "🌐 Language / भाषा",
+    list(LANGUAGE_OPTIONS.keys()),
+    horizontal=True,
+    key="language_selector"
+)
+
+IS_MARATHI = selected_language == "मराठी"
+
+def tr(english, marathi):
+    """Return UI text in the selected language."""
+    return marathi if IS_MARATHI else english
+
+
 # ============================================================
 # HEADER
 # ============================================================
 
 st.markdown(
-    '<div class="main-title">👶 Baby Shower 🎀</div>',
+    f'<div class="main-title">👶 {tr("Baby Shower 🎀", "डोहाळे जेवण 🎀")}</div>',
     unsafe_allow_html=True
 )
 
 st.markdown(
-    """
+    f"""
     <div class="subtitle">
-        Make your prediction and join the fun! 💕
+        {tr("Make your prediction and join the fun! 💕",
+            "तुमचा अंदाज नोंदवा आणि या आनंदात सहभागी व्हा! 💕")}
     </div>
     """,
     unsafe_allow_html=True
@@ -510,9 +535,9 @@ st.markdown(
 
 form_tab, gender_tab, admin_tab = st.tabs(
     [
-        "🎉 Predict",
-        "🔮 Gender",
-        "🔐 Private"
+        tr("🎉 Predict", "🎉 अंदाज"),
+        tr("🔮 Gender", "🔮 लिंग अंदाज"),
+        tr("🔐 Private", "🔐 खासगी")
     ]
 )
 
@@ -524,16 +549,16 @@ form_tab, gender_tab, admin_tab = st.tabs(
 with form_tab:
 
     st.markdown(
-        """
+        f"""
         <div class="small-heading">
-            🎊 Make Your Prediction
+            🎊 {tr("Make Your Prediction", "तुमचा अंदाज नोंदवा")}
         </div>
         """,
         unsafe_allow_html=True
     )
 
     st.caption(
-        "One submission per guest."
+        tr("One submission per guest.", "प्रत्येक पाहुण्याला एकदाच अंदाज नोंदवता येईल.")
     )
 
 
@@ -550,50 +575,50 @@ with form_tab:
     with st.form(form_key):
 
         guest_name = st.text_input(
-            "Guest Name *",
-            placeholder="Enter your full name"
+            tr("Guest Name *", "पाहुण्याचे नाव *"),
+            placeholder=tr("Enter your full name", "तुमचे पूर्ण नाव लिहा")
         )
 
         attending = st.radio(
-            "Are you attending the Baby Shower? *",
+            tr("Are you attending the Baby Shower? *", "तुम्ही डोहाळे जेवणाला उपस्थित राहणार आहात का? *"),
             [
-                "Yes",
-                "No"
+                tr("Yes", "होय"),
+                tr("No", "नाही")
             ],
             horizontal=True
         )
 
         gender_vote = st.radio(
-            "What do you predict? *",
+            tr("What do you predict? *", "तुमचा अंदाज काय आहे? *"),
             [
-                "Boy 👦",
-                "Girl 👧"
+                tr("Boy 👦", "मुलगा 👦"),
+                tr("Girl 👧", "मुलगी 👧")
             ],
             horizontal=True
         )
 
         guessed_date = st.date_input(
-            "When do you think baby will arrive? *",
+            tr("When do you think baby will arrive? *", "बाळाचा जन्म कधी होईल असे तुम्हाला वाटते? *"),
             min_value=date.today()
         )
 
         baby_boy_name = st.text_input(
-            "👦 Baby Boy Name Suggestion",
-            placeholder="Suggest a baby boy name"
+            tr("👦 Baby Boy Name Suggestion", "👦 मुलासाठी नावाची सूचना"),
+            placeholder=tr("Suggest a baby boy name", "मुलासाठी नाव सुचवा")
         )
 
         baby_girl_name = st.text_input(
-            "👧 Baby Girl Name Suggestion",
-            placeholder="Suggest a baby girl name"
+            tr("👧 Baby Girl Name Suggestion", "👧 मुलीसाठी नावाची सूचना"),
+            placeholder=tr("Suggest a baby girl name", "मुलीसाठी नाव सुचवा")
         )
 
         message = st.text_area(
-            "💌 Message for the Parents",
-            placeholder="Write your wishes..."
+            tr("💌 Message for the Parents", "💌 आई-बाबांसाठी संदेश"),
+            placeholder=tr("Write your wishes...", "तुमच्या शुभेच्छा लिहा...")
         )
 
         submitted = st.form_submit_button(
-            "🎊 Submit My Prediction",
+            tr("🎊 Submit My Prediction", "🎊 माझा अंदाज सबमिट करा"),
             use_container_width=True
         )
 
@@ -617,14 +642,14 @@ with form_tab:
         if not clean_guest_name:
 
             st.error(
-                "Please enter your Guest Name."
+                tr("Please enter your Guest Name.", "कृपया तुमचे पाहुण्याचे नाव लिहा.")
             )
 
         else:
 
             gender_value = (
                 "Boy"
-                if gender_vote.startswith("Boy")
+                if gender_vote.startswith(("Boy", "मुलगा"))
                 else "Girl"
             )
 
@@ -637,7 +662,7 @@ with form_tab:
 
                 guest_name=clean_guest_name,
 
-                attending=attending,
+                attending=("Yes" if attending in ("Yes", "होय") else "No"),
 
                 gender=gender_value,
 
@@ -711,11 +736,13 @@ with form_tab:
             elif result.get("duplicate"):
 
                 st.error(
-                    "⚠️ This guest name has already submitted."
+                    tr("⚠️ This guest name has already submitted.",
+                       "⚠️ या पाहुण्याने आधीच अंदाज नोंदवला आहे.")
                 )
 
                 st.info(
-                    "Each guest can submit only once."
+                    tr("Each guest can submit only once.",
+                       "प्रत्येक पाहुण्याला फक्त एकदाच अंदाज नोंदवता येईल.")
                 )
 
 
@@ -726,7 +753,8 @@ with form_tab:
             else:
 
                 st.error(
-                    "❌ Unable to save your prediction."
+                    tr("❌ Unable to save your prediction.",
+                       "❌ तुमचा अंदाज जतन करता आला नाही.")
                 )
 
                 if result.get("error"):
@@ -752,42 +780,43 @@ with form_tab:
         st.markdown(
             """
             <div class="small-heading">
-                💝 Your Submitted Details
+                💝 {tr("Your Submitted Details", "तुम्ही नोंदवलेली माहिती")}
             </div>
             """,
             unsafe_allow_html=True
         )
 
         st.success(
-            "🎉 Your prediction has been submitted successfully!"
+            tr("🎉 Your prediction has been submitted successfully!",
+               "🎉 तुमचा अंदाज यशस्वीपणे नोंदवला गेला!")
         )
 
         st.info(
-            f"👤 **Guest Name:** "
+            f"👤 **{tr('Guest Name', 'पाहुण्याचे नाव')}:** "
             f"{submission['guest_name']}"
         )
 
         st.write(
-            f"✅ **Attending:** "
-            f"{submission['attending']}"
+            f"✅ **{tr('Attending', 'उपस्थिती')}:** "
+            f"{tr('Yes', 'होय') if submission['attending'] == 'Yes' else tr('No', 'नाही')}"
         )
 
 
         if submission["gender"] == "Boy":
 
             st.write(
-                "🔮 **Gender Prediction:** 💙 Boy 👦"
+                f"🔮 **{tr('Gender Prediction', 'लिंगाचा अंदाज')}:** 💙 {tr('Boy', 'मुलगा')} 👦"
             )
 
         else:
 
             st.write(
-                "🔮 **Gender Prediction:** 💗 Girl 👧"
+                f"🔮 **{tr('Gender Prediction', 'लिंगाचा अंदाज')}:** 💗 {tr('Girl', 'मुलगी')} 👧"
             )
 
 
         st.write(
-            f"📅 **Predicted Arrival Date:** "
+            f"📅 **{tr('Predicted Arrival Date', 'अंदाजित जन्मतारीख')}:** "
             f"{submission['guessed_date']}"
         )
 
@@ -795,7 +824,7 @@ with form_tab:
         if submission["boy_name"]:
 
             st.write(
-                f"👦 **Baby Boy Name:** "
+                f"👦 **{tr('Baby Boy Name', 'मुलाचे नाव')}:** "
                 f"{submission['boy_name']}"
             )
 
@@ -803,7 +832,7 @@ with form_tab:
         if submission["girl_name"]:
 
             st.write(
-                f"👧 **Baby Girl Name:** "
+                f"👧 **{tr('Baby Girl Name', 'मुलीचे नाव')}:** "
                 f"{submission['girl_name']}"
             )
 
@@ -811,7 +840,7 @@ with form_tab:
         if submission["message"]:
 
             st.write(
-                "💌 **Message:**"
+                f"💌 **{tr('Message', 'संदेश')}:**"
             )
 
             st.info(
@@ -820,7 +849,8 @@ with form_tab:
 
 
         st.success(
-            "💕 Thank you for being part of our Baby Shower!"
+            tr("💕 Thank you for being part of our Baby Shower!",
+               "💕 आमच्या डोहाळे जेवणाचा भाग झाल्याबद्दल धन्यवाद!")
         )
 
 
